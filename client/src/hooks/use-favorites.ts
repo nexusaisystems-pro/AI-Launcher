@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { getSessionId } from "@/lib/session";
+import { apiRequest } from "@/lib/queryClient";
 
 interface FavoritesData {
   favorites: string[];
@@ -7,57 +9,85 @@ interface FavoritesData {
 
 export function useFavorites() {
   const [data, setData] = useState<FavoritesData>({ favorites: [], recent: [] });
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessionId] = useState(() => getSessionId());
 
-  // Function to load from localStorage
-  const loadFromStorage = () => {
-    const stored = localStorage.getItem("dayz-launcher-favorites");
-    if (stored) {
+  // Load from backend on mount
+  useEffect(() => {
+    const loadFromBackend = async () => {
       try {
-        const parsed = JSON.parse(stored);
-        setData(parsed);
+        const response = await fetch(`/api/preferences/${sessionId}`);
+        
+        if (response.ok) {
+          const preferences = await response.json();
+          setData({
+            favorites: preferences.favoriteServers || [],
+            recent: preferences.recentServers || [],
+          });
+        } else if (response.status === 404) {
+          // No preferences yet, try migrating from localStorage
+          const stored = localStorage.getItem("dayz-launcher-favorites");
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              setData(parsed);
+              // Save migrated data to backend
+              await saveToBackend(parsed);
+            } catch (error) {
+              console.error("Failed to migrate from localStorage:", error);
+            }
+          }
+        }
       } catch (error) {
-        console.error("Failed to parse favorites from localStorage:", error);
+        console.error("Failed to load preferences from backend:", error);
+        // Fallback to localStorage
+        const stored = localStorage.getItem("dayz-launcher-favorites");
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            setData(parsed);
+          } catch (error) {
+            console.error("Failed to parse favorites from localStorage:", error);
+          }
+        }
+      } finally {
+        setIsLoading(false);
       }
+    };
+
+    loadFromBackend();
+  }, [sessionId]);
+
+  // Save to backend
+  const saveToBackend = async (newData: FavoritesData) => {
+    try {
+      await apiRequest("POST", "/api/preferences", {
+        sessionId,
+        favoriteServers: newData.favorites,
+        recentServers: newData.recent,
+      });
+    } catch (error) {
+      console.error("Failed to save preferences to backend:", error);
     }
   };
 
-  // Load from localStorage on mount and set up storage listener
+  // Save to localStorage and backend whenever data changes
   useEffect(() => {
-    loadFromStorage();
-    
-    // Listen for storage events (changes in other tabs/windows)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "dayz-launcher-favorites") {
-        loadFromStorage();
-      }
-    };
-    
-    window.addEventListener("storage", handleStorageChange);
-    
-    // Also listen for custom event for same-window updates
-    const handleCustomUpdate = () => {
-      loadFromStorage();
-    };
-    window.addEventListener("favorites-updated", handleCustomUpdate);
-    
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("favorites-updated", handleCustomUpdate);
-    };
-  }, []);
+    if (isLoading) return; // Don't save during initial load
 
-  // Save to localStorage whenever data changes
-  useEffect(() => {
     const current = localStorage.getItem("dayz-launcher-favorites");
     const newValue = JSON.stringify(data);
     
     // Only update if value actually changed
     if (current !== newValue) {
+      // Save to localStorage as backup
       localStorage.setItem("dayz-launcher-favorites", newValue);
+      // Save to backend
+      saveToBackend(data);
       // Dispatch custom event for same-window updates
       window.dispatchEvent(new Event("favorites-updated"));
     }
-  }, [data]);
+  }, [data, isLoading]);
 
   const addFavorite = (serverAddress: string) => {
     setData(prev => ({
@@ -99,5 +129,6 @@ export function useFavorites() {
     isFavorite,
     addRecent,
     clearRecent,
+    isLoading,
   };
 }
