@@ -29,6 +29,22 @@ export function ServerBrowser({
 
   // Filter and search servers
   const filteredServers = servers.filter(server => {
+    // Favorites filter (if active, show only favorited servers)
+    // Note: if favoriteAddresses is defined but empty, we show NO servers (since there are no favorites)
+    if (filters.favoriteAddresses !== undefined) {
+      if (!filters.favoriteAddresses.includes(server.address)) {
+        return false;
+      }
+    }
+
+    // Recent filter (if active, show only recent servers)  
+    // Note: if recentAddresses is defined but empty, we show NO servers (since there are no recents)
+    if (filters.recentAddresses !== undefined) {
+      if (!filters.recentAddresses.includes(server.address)) {
+        return false;
+      }
+    }
+
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,19 +10,29 @@ import type { ServerFilters } from "@shared/schema";
 
 interface FilterSidebarProps {
   filters: ServerFilters;
-  onFiltersChange: (filters: ServerFilters) => void;
+  onFiltersChange: (filters: ServerFilters | ((prev: ServerFilters) => ServerFilters)) => void;
 }
 
 export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) {
   const [pingRange, setPingRange] = useState([filters.maxPing || 150]);
+  const [activeTab, setActiveTab] = useState("filters");
   const { favorites, recent } = useFavorites();
 
+  // Update filters whenever favorites/recent change and the corresponding tab is active
+  useEffect(() => {
+    if (activeTab === "favorites") {
+      onFiltersChange(prev => ({ ...prev, favoriteAddresses: favorites, recentAddresses: undefined }));
+    } else if (activeTab === "recent") {
+      onFiltersChange(prev => ({ ...prev, recentAddresses: recent, favoriteAddresses: undefined }));
+    }
+  }, [favorites, recent, activeTab, onFiltersChange]);
+
   const handleFilterChange = (key: keyof ServerFilters, value: any) => {
-    onFiltersChange({ ...filters, [key]: value });
+    onFiltersChange(prev => ({ ...prev, [key]: value }));
   };
 
   const handleQuickFilter = (filter: Partial<ServerFilters>) => {
-    onFiltersChange({ ...filters, ...filter });
+    onFiltersChange(prev => ({ ...prev, ...filter }));
   };
 
   const resetFilters = () => {
@@ -30,11 +40,23 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
     setPingRange([150]);
   };
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    
+    if (tab === "favorites") {
+      onFiltersChange(prev => ({ ...prev, favoriteAddresses: favorites, recentAddresses: undefined }));
+    } else if (tab === "recent") {
+      onFiltersChange(prev => ({ ...prev, recentAddresses: recent, favoriteAddresses: undefined }));
+    } else {
+      onFiltersChange(prev => ({ ...prev, favoriteAddresses: undefined, recentAddresses: undefined }));
+    }
+  };
+
   return (
     <aside className="w-72 bg-card border-r border-border overflow-y-auto flex-shrink-0">
       <div className="p-4 space-y-4">
         {/* Tabs */}
-        <Tabs defaultValue="filters" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-3 bg-secondary">
             <TabsTrigger value="filters" data-testid="tab-filters">Filters</TabsTrigger>
             <TabsTrigger value="favorites" data-testid="tab-favorites">Favorites</TabsTrigger>
@@ -104,7 +126,7 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold text-foreground">Ping Range</label>
-                <span className="text-xs text-muted-foreground" data-testid="text-ping-range">0-{pingRange[0]}ms</span>
+                <span className="text-xs text-muted-foreground" data-testid="text-ping-range-filter">0-{pingRange[0]}ms</span>
               </div>
               <Slider
                 value={pingRange}

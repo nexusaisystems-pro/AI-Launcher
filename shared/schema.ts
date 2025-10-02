@@ -66,6 +66,8 @@ export interface ServerFilters {
   showWhitelisted?: boolean;
   modCount?: "vanilla" | "1-10" | "10+";
   tags?: string[];
+  favoriteAddresses?: string[];
+  recentAddresses?: string[];
 }
 
 export interface ServerStats {
