@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getSessionId } from "@/lib/session";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -59,7 +59,7 @@ export function useFavorites() {
   }, [sessionId]);
 
   // Save to backend
-  const saveToBackend = async (newData: FavoritesData) => {
+  const saveToBackend = useCallback(async (newData: FavoritesData) => {
     try {
       await apiRequest("POST", "/api/preferences", {
         sessionId,
@@ -69,7 +69,7 @@ export function useFavorites() {
     } catch (error) {
       console.error("Failed to save preferences to backend:", error);
     }
-  };
+  }, [sessionId]);
 
   // Save to localStorage and backend whenever data changes
   useEffect(() => {
@@ -87,7 +87,7 @@ export function useFavorites() {
       // Dispatch custom event for same-window updates
       window.dispatchEvent(new Event("favorites-updated"));
     }
-  }, [data, isLoading]);
+  }, [data, isLoading, saveToBackend]);
 
   const addFavorite = (serverAddress: string) => {
     setData(prev => ({
