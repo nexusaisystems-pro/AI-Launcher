@@ -27,16 +27,18 @@ Preferred communication style: Simple, everyday language.
 **State Management Strategy**
 - Server state managed through React Query with 30-second stale time and 60-second auto-refetch intervals
 - Local state for UI interactions using React hooks
-- LocalStorage for persisting user favorites and recent servers
-- Session-based preferences stored on backend
+- **User preferences (favorites/recents) synced to PostgreSQL backend** via session ID
+- LocalStorage used as fallback/backup for offline resilience and migration
+- Session ID generated with nanoid and persisted in localStorage
 
 **Key Features**
 - Server browser with advanced filtering (map, ping, player count, perspective, region, mods)
 - Real-time server status updates
-- Favorites and recent servers tracking
+- **Favorites and recent servers with backend persistence** (survives page reload)
 - Server detail panel with comprehensive server information
 - Join modal with multi-step mod validation and download simulation
 - Quick filters and saved filter presets
+- Neon glassmorphism UI with animated backgrounds and smooth transitions
 
 ### Backend Architecture
 
@@ -48,6 +50,7 @@ Preferred communication style: Simple, everyday language.
 
 **API Design**
 - RESTful API endpoints for server operations (`/api/servers`, `/api/stats`)
+- User preferences endpoints (`/api/preferences/:sessionId` GET/POST)
 - A2S Protocol endpoints (`/api/servers/discover`, `/api/servers/query/:address`, `/api/servers/refresh`)
 - JSON request/response format
 - Server-side filtering and validation using Zod schemas
@@ -100,12 +103,14 @@ Preferred communication style: Simple, everyday language.
 
 **Current State**
 - No authentication system implemented
-- Session-based tracking using session IDs for user preferences
-- LocalStorage used for client-side persistence of favorites/recents
+- **Session-based tracking with unique nanoid-generated IDs stored in localStorage**
+- User preferences (favorites/recents) fully synced to PostgreSQL backend
+- Seamless migration from legacy localStorage-only storage
 
 **Design Considerations**
-- Session IDs stored in user preferences table for server-side preference persistence
+- Session IDs map to userPreferences table records for backend persistence
 - Future-ready for authentication layer addition (Steam OAuth would be natural fit for DayZ)
+- Current session approach works offline-first with backend sync when available
 
 ### External Dependencies
 
