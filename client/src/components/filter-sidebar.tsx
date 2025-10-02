@@ -279,7 +279,7 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
             {/* Reset Button */}
             <Button 
               variant="destructive" 
-              className="w-full bg-gradient-to-r from-destructive/20 to-destructive/30 hover:from-destructive/30 hover:to-destructive/40 text-destructive border border-destructive/50 font-bold font-display uppercase tracking-wide transition-all hover:scale-105 hover:neon-glow"
+              className="w-full bg-gradient-to-r from-destructive/20 to-destructive/30 hover:from-destructive/30 hover:to-destructive/40 border border-destructive/50 font-bold font-display uppercase tracking-wide transition-all hover:scale-105 hover:neon-glow text-[#0a0a0a]"
               onClick={resetFilters}
               data-testid="button-reset-filters"
             >
