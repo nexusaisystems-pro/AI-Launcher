@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertServerSchema, insertUserPreferencesSchema, type ServerFilters } from "@shared/schema";
 import { z } from "zod";
 import { a2sService } from "./a2s-service";
+import { cacheService } from "./cache-service";
 
 const serverFiltersSchema = z.object({
   map: z.string().optional(),

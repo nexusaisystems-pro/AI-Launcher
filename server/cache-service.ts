@@ -1,0 +1,160 @@
+import { storage } from './storage';
+import { a2sService } from './a2s-service';
+import type { Server } from '@shared/schema';
+
+export class CacheService {
+  private serverCache: Server[] = [];
+  private isRefreshing = false;
+  private lastRefreshTime: Date | null = null;
+  private refreshInterval: NodeJS.Timeout | null = null;
+  private readonly REFRESH_INTERVAL_MS = 60000; // 60 seconds
+  private readonly CONCURRENCY_LIMIT = 10;
+
+  async initialize() {
+    console.log('[Cache] Initializing server cache...');
+    await this.loadFromDatabase();
+    await this.discoverAndQueryNewServers();
+    this.startBackgroundRefresh();
+    console.log(`[Cache] Initialized with ${this.serverCache.length} servers`);
+  }
+
+  async loadFromDatabase() {
+    try {
+      this.serverCache = await storage.getServers();
+      this.lastRefreshTime = new Date();
+      console.log(`[Cache] Loaded ${this.serverCache.length} servers from database`);
+    } catch (error) {
+      console.error('[Cache] Failed to load from database:', error);
+      this.serverCache = [];
+    }
+  }
+
+  async discoverAndQueryNewServers(maxServers = 20) {
+    try {
+      console.log(`[Cache] Discovering up to ${maxServers} new DayZ servers...`);
+      const addresses = await a2sService.discoverDayZServers(maxServers);
+      
+      if (addresses.length === 0) {
+        console.log('[Cache] No new servers discovered');
+        return;
+      }
+
+      console.log(`[Cache] Discovered ${addresses.length} servers, querying live data...`);
+      const serverInfos = await a2sService.queryMultipleServers(addresses, this.CONCURRENCY_LIMIT);
+      
+      let newCount = 0;
+      for (const serverInfo of serverInfos) {
+        const existing = await storage.getServer(serverInfo.address);
+        if (!existing) {
+          await storage.createServer({
+            address: serverInfo.address,
+            name: serverInfo.name,
+            map: serverInfo.map,
+            playerCount: serverInfo.playerCount,
+            maxPlayers: serverInfo.maxPlayers,
+            ping: serverInfo.ping,
+            passwordProtected: serverInfo.passwordProtected,
+            perspective: serverInfo.perspective,
+            region: serverInfo.region,
+            version: serverInfo.version,
+            mods: serverInfo.mods,
+            verified: serverInfo.verified,
+          });
+          newCount++;
+        }
+      }
+      
+      if (newCount > 0) {
+        await this.loadFromDatabase();
+        console.log(`[Cache] Added ${newCount} new servers to database`);
+      }
+    } catch (error) {
+      console.error('[Cache] Failed to discover new servers:', error);
+    }
+  }
+
+  async refreshCache() {
+    if (this.isRefreshing) {
+      console.log('[Cache] Refresh already in progress, skipping');
+      return;
+    }
+
+    this.isRefreshing = true;
+    try {
+      console.log(`[Cache] Refreshing ${this.serverCache.length} servers...`);
+      const startTime = Date.now();
+      
+      const addresses = this.serverCache.map(s => s.address);
+      const updatedServers = await a2sService.queryMultipleServers(addresses, this.CONCURRENCY_LIMIT);
+      
+      for (const serverInfo of updatedServers) {
+        await storage.updateServer(serverInfo.address, {
+          name: serverInfo.name,
+          map: serverInfo.map,
+          playerCount: serverInfo.playerCount,
+          maxPlayers: serverInfo.maxPlayers,
+          ping: serverInfo.ping,
+          passwordProtected: serverInfo.passwordProtected,
+          perspective: serverInfo.perspective,
+          region: serverInfo.region,
+          version: serverInfo.version,
+          mods: serverInfo.mods,
+          verified: serverInfo.verified,
+        });
+
+        await storage.addServerAnalytics({
+          serverAddress: serverInfo.address,
+          playerCount: serverInfo.playerCount,
+          responseTime: serverInfo.ping,
+          isOnline: true,
+        });
+      }
+
+      await this.loadFromDatabase();
+      
+      const duration = Date.now() - startTime;
+      const successRate = ((updatedServers.length / addresses.length) * 100).toFixed(1);
+      console.log(`[Cache] Refresh complete: ${updatedServers.length}/${addresses.length} servers (${successRate}%) in ${(duration / 1000).toFixed(1)}s`);
+      
+      this.lastRefreshTime = new Date();
+    } catch (error) {
+      console.error('[Cache] Refresh failed:', error);
+    } finally {
+      this.isRefreshing = false;
+    }
+  }
+
+  startBackgroundRefresh() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
+
+    this.refreshInterval = setInterval(() => {
+      this.refreshCache();
+    }, this.REFRESH_INTERVAL_MS);
+
+    console.log(`[Cache] Background refresh started (every ${this.REFRESH_INTERVAL_MS / 1000}s)`);
+  }
+
+  stopBackgroundRefresh() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+      console.log('[Cache] Background refresh stopped');
+    }
+  }
+
+  getCachedServers(): Server[] {
+    return this.serverCache;
+  }
+
+  getRefreshStatus() {
+    return {
+      isRefreshing: this.isRefreshing,
+      lastRefreshTime: this.lastRefreshTime,
+      serverCount: this.serverCache.length,
+    };
+  }
+}
+
+export const cacheService = new CacheService();
