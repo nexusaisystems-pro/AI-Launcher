@@ -44,12 +44,22 @@ Preferred communication style: Simple, everyday language.
 - Express.js for HTTP API handling
 - TypeScript for type safety across the stack
 - ESM module system throughout
+- A2S Protocol integration via `steam-server-query` library for real-time server querying
 
 **API Design**
 - RESTful API endpoints for server operations (`/api/servers`, `/api/stats`)
+- A2S Protocol endpoints (`/api/servers/discover`, `/api/servers/query/:address`, `/api/servers/refresh`)
 - JSON request/response format
 - Server-side filtering and validation using Zod schemas
 - Request logging middleware for API debugging
+
+**A2S Service Layer**
+- Real-time server discovery from Steam master servers
+- Query individual DayZ servers for live player counts, ping, maps, mods
+- Multi-server querying with Promise.allSettled for reliability
+- Automatic mod parsing from server keywords
+- Region detection based on IP geolocation
+- Perspective detection (1PP/3PP) from server metadata
 
 **Development vs Production**
 - Development: Vite middleware integration for hot module replacement
@@ -57,9 +67,10 @@ Preferred communication style: Simple, everyday language.
 - Conditional Replit-specific plugins for development environment
 
 **Storage Layer**
-- In-memory storage implementation (`MemStorage`) for development/demo
-- Interface-based storage design (`IStorage`) allows easy swapping to database implementation
-- Sample data initialization for immediate functionality
+- PostgreSQL database with Drizzle ORM for persistent storage
+- Neon Database serverless driver for PostgreSQL connectivity
+- Interface-based storage design (`IStorage`) implemented by `DatabaseStorage`
+- Optimized SQL queries with WHERE clauses, NULL handling, and aggregations
 
 ### Data Storage Solutions
 
@@ -80,9 +91,10 @@ Preferred communication style: Simple, everyday language.
 - JSON fields for complex data (mods array, tags, filters)
 
 **Current Implementation**
-- In-memory storage fallback for development without database
+- PostgreSQL database provisioned and active
 - Production-ready schema defined in `shared/schema.ts`
-- Database provisioning required for persistence (Drizzle push command available)
+- Database migrations managed via `npm run db:push` (Drizzle Kit)
+- Seed data script available in `server/seed.ts`
 
 ### Authentication and Authorization
 

@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertServerSchema, insertUserPreferencesSchema, type ServerFilters } from "@shared/schema";
 import { z } from "zod";
+import { a2sService } from "./a2s-service";
 
 const serverFiltersSchema = z.object({
   map: z.string().optional(),
@@ -111,23 +112,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Mock server discovery/refresh endpoint
+  // Discover DayZ servers from Steam master servers
+  app.post("/api/servers/discover", async (req, res) => {
+    try {
+      const maxServers = req.body.maxServers || 50;
+      const addresses = await a2sService.discoverDayZServers(maxServers);
+      
+      res.json({ 
+        message: `Discovered ${addresses.length} servers`,
+        addresses,
+        count: addresses.length 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to discover servers" });
+    }
+  });
+
+  // Query server using A2S protocol and save/update in database
+  app.post("/api/servers/query/:address", async (req, res) => {
+    try {
+      const address = decodeURIComponent(req.params.address);
+      const serverInfo = await a2sService.queryServer(address);
+      
+      if (!serverInfo) {
+        return res.status(404).json({ error: "Server not found or not responding" });
+      }
+
+      const existing = await storage.getServer(address);
+      let savedServer;
+
+      if (existing) {
+        savedServer = await storage.updateServer(address, {
+          name: serverInfo.name,
+          map: serverInfo.map,
+          playerCount: serverInfo.playerCount,
+          maxPlayers: serverInfo.maxPlayers,
+          ping: serverInfo.ping,
+          passwordProtected: serverInfo.passwordProtected,
+          perspective: serverInfo.perspective,
+          region: serverInfo.region,
+          version: serverInfo.version,
+          mods: serverInfo.mods,
+          verified: serverInfo.verified,
+        });
+      } else {
+        savedServer = await storage.createServer({
+          address: serverInfo.address,
+          name: serverInfo.name,
+          map: serverInfo.map,
+          playerCount: serverInfo.playerCount,
+          maxPlayers: serverInfo.maxPlayers,
+          ping: serverInfo.ping,
+          passwordProtected: serverInfo.passwordProtected,
+          perspective: serverInfo.perspective,
+          region: serverInfo.region,
+          version: serverInfo.version,
+          mods: serverInfo.mods,
+          verified: serverInfo.verified,
+        });
+      }
+
+      await storage.addServerAnalytics({
+        serverAddress: address,
+        playerCount: serverInfo.playerCount,
+        responseTime: serverInfo.ping,
+        isOnline: true,
+      });
+
+      res.json(savedServer);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to query server" });
+    }
+  });
+
+  // Refresh all existing servers in database
   app.post("/api/servers/refresh", async (req, res) => {
     try {
-      // In a real implementation, this would query Steam master servers
-      // For now, just return current servers with updated timestamps
       const servers = await storage.getServers();
+      const addresses = servers.map(s => s.address);
       
-      // Simulate some random changes
-      for (const server of servers.slice(0, 3)) {
-        await storage.updateServer(server.address, {
-          playerCount: Math.max(0, (server.playerCount ?? 0) + Math.floor(Math.random() * 10 - 5)),
-          ping: Math.max(1, (server.ping ?? 0) + Math.floor(Math.random() * 20 - 10)),
+      const concurrency = req.body.concurrency || 5;
+      const updatedServers = await a2sService.queryMultipleServers(addresses, concurrency);
+      
+      for (const serverInfo of updatedServers) {
+        await storage.updateServer(serverInfo.address, {
+          name: serverInfo.name,
+          map: serverInfo.map,
+          playerCount: serverInfo.playerCount,
+          maxPlayers: serverInfo.maxPlayers,
+          ping: serverInfo.ping,
+          passwordProtected: serverInfo.passwordProtected,
+          perspective: serverInfo.perspective,
+          region: serverInfo.region,
+          version: serverInfo.version,
+          mods: serverInfo.mods,
+          verified: serverInfo.verified,
+        });
+
+        await storage.addServerAnalytics({
+          serverAddress: serverInfo.address,
+          playerCount: serverInfo.playerCount,
+          responseTime: serverInfo.ping,
+          isOnline: true,
         });
       }
       
-      const updatedServers = await storage.getServers();
-      res.json({ message: "Servers refreshed", count: updatedServers.length });
+      res.json({ 
+        message: "Servers refreshed",
+        updated: updatedServers.length,
+        total: servers.length 
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to refresh servers" });
     }
