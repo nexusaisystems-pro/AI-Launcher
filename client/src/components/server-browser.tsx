@@ -105,14 +105,14 @@ export function ServerBrowser({
       {/* Server List */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {/* Sort Bar */}
-        <div className="bg-secondary/30 border-b border-border px-6 py-3 flex items-center justify-between">
+        <div className="glass border-b border-primary/20 px-6 py-4 flex items-center justify-between backdrop-blur-xl">
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">Sort by:</span>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Sort by:</span>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-48 bg-secondary border-border" data-testid="select-sort">
+              <SelectTrigger className="w-48 glass border-primary/30 hover:border-primary/50 transition-colors" data-testid="select-sort">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="glass border-primary/30">
                 <SelectItem value="players">Players (High to Low)</SelectItem>
                 <SelectItem value="ping">Ping (Low to High)</SelectItem>
                 <SelectItem value="name">Name (A-Z)</SelectItem>
@@ -120,17 +120,20 @@ export function ServerBrowser({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Showing <span className="text-foreground font-semibold" data-testid="text-filtered-count">{sortedServers.length}</span> of{" "}
-              <span className="text-foreground font-semibold" data-testid="text-total-count">{servers.length}</span> servers
-            </span>
+          <div className="flex items-center gap-6">
+            <div className="text-sm">
+              <span className="text-muted-foreground">Showing </span>
+              <span className="text-primary-glow font-bold font-display text-lg" data-testid="text-filtered-count">{sortedServers.length}</span>
+              <span className="text-muted-foreground"> of </span>
+              <span className="text-foreground font-semibold" data-testid="text-total-count">{servers.length}</span>
+              <span className="text-muted-foreground"> servers</span>
+            </div>
             <div className="flex gap-2">
               <Button
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("grid")}
-                className="p-2"
+                className={`p-2 transition-all ${viewMode === "grid" ? "neon-glow" : ""}`}
                 data-testid="button-grid-view"
               >
                 <Grid className="w-4 h-4" />
@@ -139,7 +142,7 @@ export function ServerBrowser({
                 variant={viewMode === "list" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("list")}
-                className="p-2"
+                className={`p-2 transition-all ${viewMode === "list" ? "neon-glow" : ""}`}
                 data-testid="button-list-view"
               >
                 <List className="w-4 h-4" />
@@ -153,14 +156,19 @@ export function ServerBrowser({
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
-                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                <p className="text-muted-foreground">Loading servers...</p>
+                <div className="relative w-16 h-16 mx-auto mb-4">
+                  <div className="animate-spin w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full neon-glow"></div>
+                  <div className="absolute inset-0 animate-pulse">
+                    <div className="w-16 h-16 border-4 border-transparent border-t-secondary/50 rounded-full"></div>
+                  </div>
+                </div>
+                <p className="text-muted-foreground font-display text-lg">Loading servers...</p>
               </div>
             </div>
           ) : sortedServers.length === 0 ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <p className="text-lg font-medium text-foreground mb-2">No servers found</p>
+              <div className="text-center glass-card p-8 max-w-md">
+                <p className="text-xl font-display font-bold text-foreground mb-2">No servers found</p>
                 <p className="text-muted-foreground">Try adjusting your filters or search terms</p>
               </div>
             </div>

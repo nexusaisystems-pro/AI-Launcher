@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Wifi, Clock } from "lucide-react";
+import { Users, Wifi, Clock, Lock, Shield } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Server } from "@shared/schema";
 
@@ -36,60 +36,70 @@ export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardP
   };
 
   const totalModSize = (server.mods ?? []).reduce((sum, mod) => sum + mod.size, 0);
+  const playerPercentage = ((server.playerCount ?? 0) / (server.maxPlayers ?? 1)) * 100;
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (playerPercentage / 100) * circumference;
 
   return (
     <div 
-      className={`server-card gradient-border rounded-lg p-4 ${isSelected ? 'selected' : ''}`}
+      className={`server-card gradient-border rounded-xl p-5 ${isSelected ? 'selected' : ''}`}
       onClick={onSelect}
       data-testid={`card-server-${server.address}`}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-6">
         {/* Server Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex items-center justify-center flex-shrink-0 border border-primary/30">
-              <span className="text-lg font-bold text-primary">
-                {getServerInitials(server.name)}
-              </span>
+          <div className="flex items-start gap-4 mb-3">
+            <div className="relative w-14 h-14 flex-shrink-0">
+              <div className="w-14 h-14 holographic rounded-xl flex items-center justify-center border border-primary/40 neon-border">
+                <span className="text-xl font-bold font-display text-primary-glow">
+                  {getServerInitials(server.name)}
+                </span>
+              </div>
+              {server.verified && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-success rounded-full border-2 border-background flex items-center justify-center neon-glow">
+                  <Shield className="w-3 h-3 text-background" />
+                </div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-base font-semibold text-foreground truncate" data-testid={`text-server-name-${server.address}`}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <h3 className="text-lg font-bold font-display text-foreground truncate" data-testid={`text-server-name-${server.address}`}>
                   {server.name}
                 </h3>
-                {server.verified && (
-                  <Badge variant="secondary" className="badge-success flex-shrink-0">
-                    Verified
-                  </Badge>
+                {server.passwordProtected && (
+                  <Lock className="w-4 h-4 text-warning flex-shrink-0" />
                 )}
               </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="mono" data-testid={`text-server-ip-${server.address}`}>{server.address}</span>
-                <span>•</span>
-                <span data-testid={`text-server-region-${server.address}`}>{server.region}</span>
-                <span>•</span>
-                <span data-testid={`text-server-version-${server.address}`}>{server.version}</span>
+              <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+                <span className="mono font-medium" data-testid={`text-server-ip-${server.address}`}>{server.address}</span>
+                <span className="w-1 h-1 rounded-full bg-primary/50"></span>
+                <span className="uppercase tracking-wide" data-testid={`text-server-region-${server.address}`}>{server.region}</span>
+                <span className="w-1 h-1 rounded-full bg-primary/50"></span>
+                <span className="mono" data-testid={`text-server-version-${server.address}`}>{server.version}</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary" className="badge-primary">
+              <Wifi className="w-3 h-3 mr-1" />
               {server.map}
             </Badge>
-            <Badge variant="secondary" className="badge-muted">
+            <Badge variant="secondary" className="badge-secondary">
               {server.perspective ?? "Unknown"}
             </Badge>
             {(server.mods ?? []).length > 0 ? (
-              <Badge variant="secondary" className="badge-muted">
-                {(server.mods ?? []).length} Mods ({formatBytes(totalModSize)})
+              <Badge variant="secondary" className="holographic border border-primary/30">
+                <span className="font-semibold">{(server.mods ?? []).length}</span> MODS • {formatBytes(totalModSize)}
               </Badge>
             ) : (
               <Badge variant="secondary" className="badge-success">
-                Vanilla
+                VANILLA
               </Badge>
             )}
             {server.lastWipe && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground font-medium">
                 Wiped {formatDistanceToNow(new Date(server.lastWipe), { addSuffix: true })}
               </span>
             )}
@@ -97,52 +107,80 @@ export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardP
         </div>
 
         {/* Server Stats */}
-        <div className="flex items-center gap-6 flex-shrink-0">
-          {/* Players */}
-          <div className="text-center">
-            <div className="text-xs text-muted-foreground mb-1">Players</div>
-            <div className="flex items-center gap-1">
-              <Users className="w-4 h-4 text-success" />
-              <span className="text-lg font-bold text-foreground" data-testid={`text-player-count-${server.address}`}>
-                {server.playerCount ?? 0}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                / <span data-testid={`text-max-players-${server.address}`}>{server.maxPlayers ?? 0}</span>
-              </span>
+        <div className="flex items-center gap-8 flex-shrink-0">
+          {/* Players with Progress Ring */}
+          <div className="text-center relative">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Players</div>
+            <div className="relative w-20 h-20 flex items-center justify-center">
+              <svg className="progress-ring absolute inset-0" width="80" height="80">
+                <circle
+                  className="text-card-elevated"
+                  strokeWidth="4"
+                  stroke="currentColor"
+                  fill="transparent"
+                  r={radius}
+                  cx="40"
+                  cy="40"
+                />
+                <circle
+                  className="progress-ring-circle"
+                  strokeWidth="4"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  fill="transparent"
+                  r={radius}
+                  cx="40"
+                  cy="40"
+                />
+              </svg>
+              <div className="relative z-10 text-center">
+                <div className="text-2xl font-bold font-display text-primary-glow" data-testid={`text-player-count-${server.address}`}>
+                  {server.playerCount ?? 0}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  / <span data-testid={`text-max-players-${server.address}`}>{server.maxPlayers ?? 0}</span>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Ping */}
           <div className="text-center">
-            <div className="text-xs text-muted-foreground mb-1">Ping</div>
-            <div className="flex items-center gap-1">
-              <span className={`status-dot ${getPingStatus(server.ping ?? 0)}`}></span>
-              <span className={`text-lg font-bold ${getPingColor(server.ping ?? 0)}`} data-testid={`text-ping-${server.address}`}>
-                {server.ping ?? 0}
-              </span>
-              <span className="text-sm text-muted-foreground">ms</span>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Ping</div>
+            <div className="glass-card px-4 py-3 rounded-lg neon-border">
+              <div className="flex items-center gap-2 justify-center mb-1">
+                <span className={`status-dot ${getPingStatus(server.ping ?? 0)}`}></span>
+                <span className={`text-2xl font-bold font-display ${getPingColor(server.ping ?? 0)}`} data-testid={`text-ping-${server.address}`}>
+                  {server.ping ?? 0}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">ms</div>
             </div>
           </div>
 
           {/* Queue */}
           <div className="text-center">
-            <div className="text-xs text-muted-foreground mb-1">Queue</div>
-            <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span className="text-lg font-bold text-foreground" data-testid={`text-queue-${server.address}`}>
-                {server.queue ?? 0}
-              </span>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Queue</div>
+            <div className="glass-card px-4 py-3 rounded-lg border border-border-subtle">
+              <div className="flex items-center gap-2 justify-center mb-1">
+                <Clock className="w-4 h-4 text-warning" />
+                <span className="text-2xl font-bold font-display text-foreground" data-testid={`text-queue-${server.address}`}>
+                  {server.queue ?? 0}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">waiting</div>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5">
             <Button 
               onClick={(e) => {
                 e.stopPropagation();
                 onJoin();
               }}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 text-sm font-semibold whitespace-nowrap"
+              className="btn-primary px-8 py-3 text-sm font-bold font-display uppercase tracking-wider whitespace-nowrap"
               data-testid={`button-join-${server.address}`}
             >
               Join Server
@@ -153,7 +191,7 @@ export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardP
                 e.stopPropagation();
                 onSelect();
               }}
-              className="bg-secondary hover:bg-muted border-border text-foreground px-6 py-2 text-sm font-medium whitespace-nowrap"
+              className="glass border-primary/30 hover:border-primary/50 text-foreground px-8 py-2 text-sm font-semibold uppercase tracking-wide whitespace-nowrap transition-all hover:neon-glow"
               data-testid={`button-details-${server.address}`}
             >
               Details

@@ -33,29 +33,32 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="flex items-center justify-between px-6 py-4">
+      <header className="glass border-b border-primary/20 sticky top-0 z-50 backdrop-blur-xl">
+        <div className="flex items-center justify-between px-6 py-5">
           {/* Logo and Title */}
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <Globe className="w-6 h-6 text-primary-foreground" />
+            <div className="relative w-12 h-12 holographic rounded-xl flex items-center justify-center neon-border animate-float">
+              <Globe className="w-7 h-7 text-primary-glow" />
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 blur-xl -z-10"></div>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">DayZ Server Browser</h1>
-              <p className="text-xs text-muted-foreground">Next-Gen Launcher</p>
+              <h1 className="text-2xl font-bold font-display text-foreground bg-clip-text text-transparent bg-gradient-to-r from-primary-glow via-secondary-glow to-accent-glow animate-shimmer" style={{backgroundSize: "200% auto"}}>
+                DayZ Server Browser
+              </h1>
+              <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Next-Gen Launcher</p>
             </div>
           </div>
           
           {/* Search Bar */}
           <div className="flex-1 max-w-2xl mx-8">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary/60 group-focus-within:text-primary transition-colors" />
               <Input 
                 type="text" 
                 placeholder="Search servers by name, IP, or map..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-secondary border-border pl-10 pr-4 py-2.5 text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
+                className="w-full glass border-primary/30 pl-12 pr-4 py-3 text-foreground placeholder-muted-foreground focus:border-primary focus:neon-glow transition-all"
                 data-testid="search-input"
               />
             </div>
@@ -67,14 +70,14 @@ export default function Dashboard() {
               variant="outline" 
               onClick={handleRefresh}
               disabled={isLoading}
-              className="bg-secondary hover:bg-muted border-border"
+              className="glass border-primary/30 hover:border-primary/50 hover:neon-glow transition-all font-semibold"
               data-testid="button-refresh"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button 
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="btn-primary font-bold font-display uppercase tracking-wide"
               data-testid="button-add-server"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -84,32 +87,35 @@ export default function Dashboard() {
         </div>
         
         {/* Quick Stats Bar */}
-        <div className="bg-secondary/50 border-t border-border px-6 py-2">
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
+        <div className="glass border-t border-primary/20 px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-3">
                 <span className="status-dot status-online"></span>
-                <span className="text-muted-foreground">Servers Online:</span>
-                <span className="text-foreground font-semibold" data-testid="text-servers-online">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Servers:</span>
+                <span className="text-lg font-bold font-display text-primary-glow" data-testid="text-servers-online">
                   {stats?.serversOnline ?? (Array.isArray(servers) ? servers.length : 0)}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Total Players:</span>
-                <span className="text-success font-semibold" data-testid="text-total-players">
+              <div className="w-px h-6 bg-primary/20"></div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Players:</span>
+                <span className="text-lg font-bold font-display text-success" data-testid="text-total-players">
                   {stats?.totalPlayers ?? (Array.isArray(servers) ? servers.reduce((sum, s) => sum + (s.playerCount ?? 0), 0) : 0)}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Avg Ping:</span>
-                <span className="text-foreground font-semibold" data-testid="text-avg-ping">
-                  {stats?.avgPing ?? (Array.isArray(servers) && servers.length > 0 ? Math.round(servers.reduce((sum, s) => sum + (s.ping ?? 0), 0) / servers.length) : 0)}ms
+              <div className="w-px h-6 bg-primary/20"></div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Avg Ping:</span>
+                <span className="text-lg font-bold font-display text-foreground" data-testid="text-avg-ping">
+                  {stats?.avgPing ?? (Array.isArray(servers) && servers.length > 0 ? Math.round(servers.reduce((sum, s) => sum + (s.ping ?? 0), 0) / servers.length) : 0)}<span className="text-sm text-muted-foreground">ms</span>
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Last Updated:</span>
-              <span className="text-foreground font-medium" data-testid="text-last-updated">
+            <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-md border border-primary/20">
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse-slow"></span>
+              <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Updated:</span>
+              <span className="text-xs font-semibold text-foreground mono" data-testid="text-last-updated">
                 {stats?.lastUpdated ? new Date(stats.lastUpdated).toLocaleTimeString() : 'Just now'}
               </span>
             </div>
