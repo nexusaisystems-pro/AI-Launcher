@@ -37,7 +37,7 @@ export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardP
 
   const totalModSize = (server.mods ?? []).reduce((sum, mod) => sum + mod.size, 0);
   const playerPercentage = ((server.playerCount ?? 0) / (server.maxPlayers ?? 1)) * 100;
-  const radius = 20;
+  const radius = 28;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (playerPercentage / 100) * circumference;
 
@@ -111,27 +111,27 @@ export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardP
           {/* Players with Progress Ring */}
           <div className="text-center relative">
             <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Players</div>
-            <div className="relative w-20 h-20 flex items-center justify-center">
-              <svg className="progress-ring absolute inset-0" width="80" height="80">
+            <div className="relative w-28 h-28 flex items-center justify-center">
+              <svg className="progress-ring absolute inset-0" width="112" height="112">
                 <circle
                   className="text-card-elevated"
-                  strokeWidth="4"
+                  strokeWidth="5"
                   stroke="currentColor"
                   fill="transparent"
                   r={radius}
-                  cx="40"
-                  cy="40"
+                  cx="56"
+                  cy="56"
                 />
                 <circle
                   className="progress-ring-circle"
-                  strokeWidth="4"
+                  strokeWidth="5"
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
                   strokeLinecap="round"
                   fill="transparent"
                   r={radius}
-                  cx="40"
-                  cy="40"
+                  cx="56"
+                  cy="56"
                 />
               </svg>
               <div className="relative z-10 text-center">
