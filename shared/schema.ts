@@ -44,6 +44,20 @@ export const userPreferences = pgTable("user_preferences", {
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const workshopMods = pgTable("workshop_mods", {
+  workshopId: varchar("workshop_id", { length: 50 }).primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  fileSize: integer("file_size"),
+  previewUrl: text("preview_url"),
+  timeCreated: integer("time_created"),
+  timeUpdated: integer("time_updated"),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  creator: varchar("creator", { length: 100 }),
+  subscriberCount: integer("subscriber_count"),
+  cachedAt: timestamp("cached_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Types
 export interface ServerMod {
   id: string;
@@ -94,6 +108,10 @@ export const insertUserPreferencesSchema = createInsertSchema(userPreferences).o
   updatedAt: true,
 });
 
+export const insertWorkshopModSchema = createInsertSchema(workshopMods).omit({
+  cachedAt: true,
+});
+
 // Types
 export type InsertServer = z.infer<typeof insertServerSchema>;
 export type Server = typeof servers.$inferSelect;
@@ -101,3 +119,5 @@ export type InsertServerAnalytics = z.infer<typeof insertServerAnalyticsSchema>;
 export type ServerAnalytics = typeof serverAnalytics.$inferSelect;
 export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertWorkshopMod = z.infer<typeof insertWorkshopModSchema>;
+export type WorkshopMod = typeof workshopMods.$inferSelect;

@@ -5,6 +5,7 @@ import { insertServerSchema, insertUserPreferencesSchema, type ServerFilters } f
 import { z } from "zod";
 import { a2sService } from "./a2s-service";
 import { cacheService } from "./cache-service";
+import { steamWorkshopService } from "./steam-workshop-service";
 
 const serverFiltersSchema = z.object({
   map: z.string().optional(),
@@ -225,6 +226,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to refresh servers" });
+    }
+  });
+
+  // Get workshop mod details by IDs
+  app.post("/api/workshop/mods", async (req, res) => {
+    try {
+      const workshopIdsSchema = z.object({
+        workshopIds: z.array(z.string()),
+        forceRefresh: z.boolean().optional().default(false),
+      });
+      
+      const { workshopIds, forceRefresh } = workshopIdsSchema.parse(req.body);
+      
+      if (workshopIds.length === 0) {
+        return res.json([]);
+      }
+
+      const cacheAge = 7 * 24 * 60 * 60 * 1000;
+      const cachedMods = await storage.getWorkshopMods(workshopIds);
+      
+      const freshIds: string[] = [];
+      const staleIds: string[] = [];
+      
+      workshopIds.forEach(id => {
+        const cached = cachedMods.find(m => m.workshopId === id);
+        if (!cached || forceRefresh) {
+          freshIds.push(id);
+        } else if (cached.cachedAt) {
+          const age = Date.now() - new Date(cached.cachedAt).getTime();
+          if (age > cacheAge) {
+            staleIds.push(id);
+          }
+        }
+      });
+      
+      const idsToFetch = [...freshIds, ...staleIds];
+      
+      if (idsToFetch.length > 0) {
+        const freshData = await steamWorkshopService.getWorkshopItemDetails(idsToFetch);
+        if (freshData.length > 0) {
+          await storage.cacheWorkshopMods(freshData);
+        }
+      }
+      
+      const allMods = await storage.getWorkshopMods(workshopIds);
+      res.json(allMods);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      console.error('Workshop API error:', error);
+      res.status(500).json({ error: "Failed to fetch workshop mods" });
+    }
+  });
+
+  // Get single workshop mod details
+  app.get("/api/workshop/mods/:workshopId", async (req, res) => {
+    try {
+      const { workshopId } = req.params;
+      const forceRefresh = req.query.forceRefresh === 'true';
+      
+      let mod = await storage.getWorkshopMod(workshopId);
+      
+      if (!mod || forceRefresh) {
+        const freshData = await steamWorkshopService.getWorkshopItemDetail(workshopId);
+        if (freshData) {
+          mod = await storage.cacheWorkshopMod(freshData);
+        }
+      }
+      
+      if (!mod) {
+        return res.status(404).json({ error: "Workshop mod not found" });
+      }
+      
+      res.json(mod);
+    } catch (error) {
+      console.error('Workshop API error:', error);
+      res.status(500).json({ error: "Failed to fetch workshop mod" });
     }
   });
 

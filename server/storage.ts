@@ -1,4 +1,4 @@
-import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type ServerStats, type ServerFilters, servers, serverAnalytics, userPreferences } from "@shared/schema";
+import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type WorkshopMod, type InsertWorkshopMod, type ServerStats, type ServerFilters, servers, serverAnalytics, userPreferences, workshopMods } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
 
@@ -17,6 +17,12 @@ export interface IStorage {
   // User preferences
   getUserPreferences(sessionId: string): Promise<UserPreferences | undefined>;
   createOrUpdateUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences>;
+  
+  // Workshop mods
+  getWorkshopMod(workshopId: string): Promise<WorkshopMod | undefined>;
+  getWorkshopMods(workshopIds: string[]): Promise<WorkshopMod[]>;
+  cacheWorkshopMod(mod: InsertWorkshopMod): Promise<WorkshopMod>;
+  cacheWorkshopMods(mods: InsertWorkshopMod[]): Promise<WorkshopMod[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -161,6 +167,47 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  async getWorkshopMod(workshopId: string): Promise<WorkshopMod | undefined> {
+    const [mod] = await db
+      .select()
+      .from(workshopMods)
+      .where(eq(workshopMods.workshopId, workshopId));
+    return mod || undefined;
+  }
+
+  async getWorkshopMods(workshopIds: string[]): Promise<WorkshopMod[]> {
+    if (workshopIds.length === 0) return [];
+    
+    return await db
+      .select()
+      .from(workshopMods)
+      .where(inArray(workshopMods.workshopId, workshopIds));
+  }
+
+  async cacheWorkshopMod(mod: InsertWorkshopMod): Promise<WorkshopMod> {
+    const [cached] = await db
+      .insert(workshopMods)
+      .values(mod)
+      .onConflictDoUpdate({
+        target: workshopMods.workshopId,
+        set: {
+          ...mod,
+          cachedAt: new Date(),
+        },
+      })
+      .returning();
+    return cached;
+  }
+
+  async cacheWorkshopMods(mods: InsertWorkshopMod[]): Promise<WorkshopMod[]> {
+    if (mods.length === 0) return [];
+    
+    const results = await Promise.all(
+      mods.map(mod => this.cacheWorkshopMod(mod))
+    );
+    return results;
   }
 }
 
