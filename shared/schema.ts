@@ -58,6 +58,24 @@ export const workshopMods = pgTable("workshop_mods", {
   cachedAt: timestamp("cached_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const battlemetricsCache = pgTable("battlemetrics_cache", {
+  serverId: varchar("server_id", { length: 50 }).primaryKey(),
+  serverAddress: varchar("server_address", { length: 50 }).notNull(),
+  battlemetricsId: varchar("battlemetrics_id", { length: 50 }),
+  rank: integer("rank"),
+  uptimePercent7d: integer("uptime_percent_7d"),
+  uptimePercent30d: integer("uptime_percent_30d"),
+  avgPlayerCount7d: integer("avg_player_count_7d"),
+  peakPlayerCount7d: integer("peak_player_count_7d"),
+  maxPlayerCount: integer("max_player_count"),
+  serverAge: integer("server_age_days"),
+  status: varchar("status", { length: 20 }),
+  country: varchar("country", { length: 50 }),
+  cityName: varchar("city_name", { length: 100 }),
+  details: jsonb("details").$type<BattleMetricsDetails>(),
+  cachedAt: timestamp("cached_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Types
 export interface ServerMod {
   id: string;
@@ -67,6 +85,21 @@ export interface ServerMod {
   required: boolean;
   installed?: boolean;
   version?: string;
+}
+
+export interface BattleMetricsDetails {
+  firstSeen?: string;
+  lastSeen?: string;
+  privateServer?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  portQuery?: number;
+  portGame?: number;
+  players?: number;
+  maxPlayers?: number;
+  map?: string;
+  version?: string;
+  queryStatus?: string;
 }
 
 export interface ServerFilters {
@@ -112,6 +145,10 @@ export const insertWorkshopModSchema = createInsertSchema(workshopMods).omit({
   cachedAt: true,
 });
 
+export const insertBattleMetricsCacheSchema = createInsertSchema(battlemetricsCache).omit({
+  cachedAt: true,
+});
+
 // Types
 export type InsertServer = z.infer<typeof insertServerSchema>;
 export type Server = typeof servers.$inferSelect;
@@ -121,3 +158,5 @@ export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type InsertWorkshopMod = z.infer<typeof insertWorkshopModSchema>;
 export type WorkshopMod = typeof workshopMods.$inferSelect;
+export type InsertBattleMetricsCache = z.infer<typeof insertBattleMetricsCacheSchema>;
+export type BattleMetricsCache = typeof battlemetricsCache.$inferSelect;

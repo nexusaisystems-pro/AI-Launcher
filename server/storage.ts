@@ -1,4 +1,4 @@
-import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type WorkshopMod, type InsertWorkshopMod, type ServerStats, type ServerFilters, servers, serverAnalytics, userPreferences, workshopMods } from "@shared/schema";
+import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type WorkshopMod, type InsertWorkshopMod, type BattleMetricsCache, type InsertBattleMetricsCache, type ServerStats, type ServerFilters, servers, serverAnalytics, userPreferences, workshopMods, battlemetricsCache } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
 
@@ -23,6 +23,12 @@ export interface IStorage {
   getWorkshopMods(workshopIds: string[]): Promise<WorkshopMod[]>;
   cacheWorkshopMod(mod: InsertWorkshopMod): Promise<WorkshopMod>;
   cacheWorkshopMods(mods: InsertWorkshopMod[]): Promise<WorkshopMod[]>;
+  
+  // BattleMetrics cache
+  getBattleMetricsCache(serverId: string): Promise<BattleMetricsCache | undefined>;
+  getBattleMetricsCacheByAddress(serverAddress: string): Promise<BattleMetricsCache | undefined>;
+  cacheBattleMetrics(data: InsertBattleMetricsCache): Promise<BattleMetricsCache>;
+  cacheBattleMetricsBatch(data: InsertBattleMetricsCache[]): Promise<BattleMetricsCache[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -206,6 +212,46 @@ export class DatabaseStorage implements IStorage {
     
     const results = await Promise.all(
       mods.map(mod => this.cacheWorkshopMod(mod))
+    );
+    return results;
+  }
+
+  async getBattleMetricsCache(serverId: string): Promise<BattleMetricsCache | undefined> {
+    const [cached] = await db
+      .select()
+      .from(battlemetricsCache)
+      .where(eq(battlemetricsCache.serverId, serverId));
+    return cached || undefined;
+  }
+
+  async getBattleMetricsCacheByAddress(serverAddress: string): Promise<BattleMetricsCache | undefined> {
+    const [cached] = await db
+      .select()
+      .from(battlemetricsCache)
+      .where(eq(battlemetricsCache.serverAddress, serverAddress));
+    return cached || undefined;
+  }
+
+  async cacheBattleMetrics(data: InsertBattleMetricsCache): Promise<BattleMetricsCache> {
+    const [cached] = await db
+      .insert(battlemetricsCache)
+      .values(data)
+      .onConflictDoUpdate({
+        target: battlemetricsCache.serverId,
+        set: {
+          ...data,
+          cachedAt: new Date(),
+        },
+      })
+      .returning();
+    return cached;
+  }
+
+  async cacheBattleMetricsBatch(data: InsertBattleMetricsCache[]): Promise<BattleMetricsCache[]> {
+    if (data.length === 0) return [];
+    
+    const results = await Promise.all(
+      data.map(item => this.cacheBattleMetrics(item))
     );
     return results;
   }

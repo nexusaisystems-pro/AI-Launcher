@@ -6,6 +6,7 @@ import { z } from "zod";
 import { a2sService } from "./a2s-service";
 import { cacheService } from "./cache-service";
 import { steamWorkshopService } from "./steam-workshop-service";
+import { battleMetricsService } from "./battlemetrics-service";
 
 const serverFiltersSchema = z.object({
   map: z.string().optional(),
@@ -332,6 +333,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Workshop API error:', error);
       res.status(500).json({ error: "Failed to fetch workshop mod" });
+    }
+  });
+
+  // Enrich server with BattleMetrics data
+  app.post("/api/battlemetrics/enrich", async (req, res) => {
+    try {
+      const serversSchema = z.object({
+        servers: z.array(z.object({
+          id: z.string(),
+          address: z.string(),
+        })),
+        forceRefresh: z.boolean().optional().default(false),
+      });
+
+      const { servers: serversToEnrich, forceRefresh } = serversSchema.parse(req.body);
+
+      if (serversToEnrich.length === 0) {
+        return res.json([]);
+      }
+
+      console.log(`[BattleMetrics] Enriching ${serversToEnrich.length} server(s)`);
+
+      const cacheAge = 24 * 60 * 60 * 1000; // 24 hours
+      const results = [];
+
+      for (const server of serversToEnrich) {
+        let bmData = await storage.getBattleMetricsCache(server.id);
+
+        if (!bmData || forceRefresh || (bmData.cachedAt && (Date.now() - new Date(bmData.cachedAt).getTime()) > cacheAge)) {
+          console.log(`[BattleMetrics] Fetching fresh data for ${server.address}`);
+          const freshData = await battleMetricsService.searchServerByAddress(server.address);
+          
+          if (freshData) {
+            bmData = await storage.cacheBattleMetrics({ ...freshData, serverId: server.id });
+            console.log(`[BattleMetrics] Cached data for ${server.address} (rank: ${bmData.rank})`);
+          } else {
+            console.warn(`[BattleMetrics] No data found for ${server.address}`);
+          }
+        }
+
+        if (bmData) {
+          results.push(bmData);
+        }
+      }
+
+      console.log(`[BattleMetrics] Enriched ${results.length}/${serversToEnrich.length} servers`);
+      res.json(results);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      console.error('BattleMetrics API error:', error);
+      res.status(500).json({ error: "Failed to enrich servers with BattleMetrics data" });
+    }
+  });
+
+  // Get BattleMetrics data for a single server
+  app.get("/api/battlemetrics/:serverId", async (req, res) => {
+    try {
+      const { serverId } = req.params;
+      const forceRefresh = req.query.forceRefresh === 'true';
+
+      let bmData = await storage.getBattleMetricsCache(serverId);
+
+      if (!bmData || forceRefresh) {
+        const server = await storage.getServer(serverId);
+        if (!server) {
+          return res.status(404).json({ error: "Server not found" });
+        }
+
+        const freshData = await battleMetricsService.searchServerByAddress(server.address);
+        if (freshData) {
+          bmData = await storage.cacheBattleMetrics({ ...freshData, serverId });
+        }
+      }
+
+      if (!bmData) {
+        return res.status(404).json({ error: "BattleMetrics data not found" });
+      }
+
+      res.json(bmData);
+    } catch (error) {
+      console.error('BattleMetrics API error:', error);
+      res.status(500).json({ error: "Failed to fetch BattleMetrics data" });
     }
   });
 
