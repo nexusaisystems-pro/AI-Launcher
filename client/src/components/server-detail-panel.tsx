@@ -1,15 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Play, Heart, Copy, Zap, Users, Globe, ExternalLink, Download } from "lucide-react";
+import { X, Play, Heart, Copy, Zap, Users, Globe, ExternalLink, Download, Shield, AlertTriangle, Award, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkshopMods } from "@/hooks/use-workshop-mods";
 import type { Server } from "@shared/schema";
+import type { ServerWithIntelligence } from "@/hooks/use-servers";
 
 interface ServerDetailPanelProps {
-  server: Server;
+  server: ServerWithIntelligence;
   onClose: () => void;
   onJoin: () => void;
 }
@@ -59,6 +60,41 @@ export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanel
 
   const getServerInitials = (name: string) => {
     return name.split(" ").slice(0, 2).map(word => word[0]).join("").toUpperCase();
+  };
+
+  const getGradeColor = (grade: string) => {
+    switch (grade) {
+      case "S": return "hsl(280, 75%, 65%)";
+      case "A": return "hsl(145, 75%, 50%)";
+      case "B": return "hsl(190, 85%, 55%)";
+      case "C": return "hsl(40, 90%, 55%)";
+      case "D": return "hsl(25, 85%, 55%)";
+      case "F": return "hsl(0, 85%, 60%)";
+      default: return "hsl(220, 10%, 70%)";
+    }
+  };
+
+  const getTrustScoreColor = (score: number) => {
+    if (score >= 76) return "hsl(145, 75%, 50%)";
+    if (score >= 51) return "hsl(40, 90%, 55%)";
+    return "hsl(0, 85%, 60%)";
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case "rising": return <TrendingUp className="w-4 h-4" />;
+      case "declining": return <TrendingDown className="w-4 h-4" />;
+      default: return <Minus className="w-4 h-4" />;
+    }
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case "high": return "hsl(0, 85%, 60%)";
+      case "medium": return "hsl(40, 90%, 55%)";
+      case "low": return "hsl(220, 10%, 70%)";
+      default: return "hsl(220, 10%, 70%)";
+    }
   };
 
   return (
@@ -132,13 +168,182 @@ export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanel
         </div>
 
         {/* Tab Navigation */}
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue={server.intelligence ? "intelligence" : "overview"} className="w-full">
+          <TabsList className={`grid w-full ${server.intelligence ? 'grid-cols-5' : 'grid-cols-4'}`}>
+            {server.intelligence && (
+              <TabsTrigger value="intelligence" className="gap-1">
+                <Shield className="w-3.5 h-3.5" />
+                Trust
+              </TabsTrigger>
+            )}
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="mods">Mods</TabsTrigger>
             <TabsTrigger value="rules">Rules</TabsTrigger>
             <TabsTrigger value="players">Players</TabsTrigger>
           </TabsList>
+
+          {/* Intelligence Tab Content */}
+          {server.intelligence && (
+            <TabsContent value="intelligence" className="space-y-4 mt-4">
+              {/* Quality Score Card */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-foreground">Server Quality</h4>
+                <div className="bg-secondary rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-16 h-16 rounded-xl flex items-center justify-center border-2"
+                        style={{ 
+                          borderColor: getGradeColor(server.intelligence.grade),
+                          backgroundColor: getGradeColor(server.intelligence.grade) + '20',
+                        }}
+                      >
+                        <span className="text-3xl font-black font-display" style={{ color: getGradeColor(server.intelligence.grade) }}>
+                          {server.intelligence.grade}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold font-display mb-1" style={{ color: getTrustScoreColor(server.intelligence.qualityScore) }}>
+                          {server.intelligence.qualityScore}/100
+                        </div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wide">Quality Score</div>
+                      </div>
+                    </div>
+                    {server.intelligence.verified && (
+                      <Badge className="badge-success gap-1.5">
+                        <Shield className="w-3.5 h-3.5" />
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="w-full bg-card-elevated rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="h-full transition-all duration-1000 rounded-full"
+                      style={{ 
+                        width: `${server.intelligence.qualityScore}%`,
+                        backgroundColor: getTrustScoreColor(server.intelligence.qualityScore)
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Fraud Warnings */}
+              {server.intelligence.fraudFlags.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-destructive flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Security Alerts
+                  </h4>
+                  <div className="space-y-2">
+                    {server.intelligence.fraudFlags.map((flag, index) => (
+                      <div 
+                        key={index}
+                        className="rounded-lg p-3 border"
+                        style={{ 
+                          backgroundColor: getSeverityColor(flag.severity) + '15',
+                          borderColor: getSeverityColor(flag.severity) + '40'
+                        }}
+                      >
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: getSeverityColor(flag.severity) }} />
+                          <div>
+                            <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: getSeverityColor(flag.severity) }}>
+                              {flag.type.replace(/_/g, ' ')} • {flag.severity} severity
+                            </div>
+                            <div className="text-sm text-foreground">
+                              {flag.evidence}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Trust Indicators */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-foreground">Trust Indicators</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-secondary rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground mb-1">BattleMetrics Rank</div>
+                    <div className="flex items-center gap-1.5">
+                      {server.intelligence.trustIndicators.rank && getTrendIcon(server.intelligence.trustIndicators.trend)}
+                      <span className="text-sm font-bold text-foreground">
+                        {server.intelligence.trustIndicators.rank ? `#${server.intelligence.trustIndicators.rank.toLocaleString()}` : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-secondary rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground mb-1">Player Consistency</div>
+                    <div className="text-sm font-bold text-foreground">
+                      {server.intelligence.trustIndicators.playerConsistency}%
+                    </div>
+                  </div>
+                  <div className="bg-secondary rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground mb-1">A2S vs BM Match</div>
+                    <div className="text-sm font-bold text-foreground">
+                      {server.intelligence.trustIndicators.a2sVsBmMatch}%
+                    </div>
+                  </div>
+                  <div className="bg-secondary rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground mb-1">7-Day Uptime</div>
+                    <div className="text-sm font-bold text-foreground">
+                      {server.intelligence.trustIndicators.uptime7d !== null ? `${server.intelligence.trustIndicators.uptime7d}%` : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* BattleMetrics Link */}
+              {server.intelligence.battlemetricsId && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-foreground">BattleMetrics Data</h4>
+                  <div className="bg-secondary rounded-lg p-3 space-y-2">
+                    {server.intelligence.battlemetricsName && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Server Name:</span>
+                        <span className="text-foreground text-right truncate max-w-[240px]">
+                          {server.intelligence.battlemetricsName}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Status:</span>
+                      <span className={`font-semibold ${server.intelligence.battlemetricsStatus === 'online' ? 'text-success' : 'text-destructive'}`}>
+                        {server.intelligence.battlemetricsStatus || 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Cache Age:</span>
+                      <span className="text-foreground">
+                        {server.intelligence.cacheAge !== null ? `${server.intelligence.cacheAge} hours` : 'Fresh'}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-2 gap-2"
+                      onClick={() => window.open(`https://www.battlemetrics.com/servers/dayz/${server.intelligence!.battlemetricsId}`, '_blank')}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      View on BattleMetrics
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Trust Explanation */}
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Trust scores are calculated using BattleMetrics data, player count consistency, uptime history, and anti-fraud detection algorithms. Scores are updated every 24 hours.
+                </p>
+              </div>
+            </TabsContent>
+          )}
 
           <TabsContent value="overview" className="space-y-4 mt-4">
             {/* Connection Info */}
