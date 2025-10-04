@@ -129,6 +129,30 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
                 >
                   Vanilla
                 </Badge>
+                <Badge 
+                  variant="secondary"
+                  className={`cursor-pointer transition-all hover:scale-105 ${filters.minQualityScore === 75 ? 'badge-success animate-pulse-slow' : 'badge-muted hover:badge-success'}`}
+                  onClick={() => handleQuickFilter({ minQualityScore: 75 })}
+                  data-testid="badge-high-quality"
+                >
+                  High Quality
+                </Badge>
+                <Badge 
+                  variant="secondary"
+                  className={`cursor-pointer transition-all hover:scale-105 ${filters.verifiedOnly ? 'badge-primary animate-pulse-slow' : 'badge-muted hover:badge-primary'}`}
+                  onClick={() => handleQuickFilter({ verifiedOnly: !filters.verifiedOnly })}
+                  data-testid="badge-verified"
+                >
+                  Verified Only
+                </Badge>
+                <Badge 
+                  variant="secondary"
+                  className={`cursor-pointer transition-all hover:scale-105 ${filters.hideFraud ? 'badge-destructive animate-pulse-slow' : 'badge-muted hover:badge-destructive'}`}
+                  onClick={() => handleQuickFilter({ hideFraud: !filters.hideFraud })}
+                  data-testid="badge-hide-fraud"
+                >
+                  Hide Fraud
+                </Badge>
               </div>
             </div>
 

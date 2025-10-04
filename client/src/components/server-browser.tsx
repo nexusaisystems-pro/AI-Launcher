@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Grid, List } from "lucide-react";
 import type { Server, ServerFilters } from "@shared/schema";
+import type { ServerWithIntelligence } from "@/hooks/use-servers";
 
 interface ServerBrowserProps {
-  servers: Server[];
+  servers: ServerWithIntelligence[];
   isLoading: boolean;
   searchQuery: string;
-  selectedServer: Server | null;
-  onServerSelect: (server: Server) => void;
-  onServerJoin: (server: Server) => void;
+  selectedServer: ServerWithIntelligence | null;
+  onServerSelect: (server: ServerWithIntelligence) => void;
+  onServerJoin: (server: ServerWithIntelligence) => void;
 }
 
 export function ServerBrowser({ 
@@ -75,6 +76,17 @@ export function ServerBrowser({
       return false;
     }
 
+    // Quality filters
+    if (filters.minQualityScore && (!server.intelligence || server.intelligence.qualityScore < filters.minQualityScore)) {
+      return false;
+    }
+    if (filters.hideFraud && server.intelligence && server.intelligence.fraudFlags.length > 0) {
+      return false;
+    }
+    if (filters.verifiedOnly && (!server.intelligence || !server.intelligence.verified)) {
+      return false;
+    }
+
     return true;
   });
 
@@ -89,6 +101,10 @@ export function ServerBrowser({
         return a.name.localeCompare(b.name);
       case "map":
         return (a.map || "").localeCompare(b.map || "");
+      case "quality":
+        const scoreA = a.intelligence?.qualityScore ?? 0;
+        const scoreB = b.intelligence?.qualityScore ?? 0;
+        return scoreB - scoreA;
       default:
         return 0;
     }
@@ -113,6 +129,7 @@ export function ServerBrowser({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="glass border-primary/30">
+                <SelectItem value="quality">Quality Score (High to Low)</SelectItem>
                 <SelectItem value="players">Players (High to Low)</SelectItem>
                 <SelectItem value="ping">Ping (Low to High)</SelectItem>
                 <SelectItem value="name">Name (A-Z)</SelectItem>

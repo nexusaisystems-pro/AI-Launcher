@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, RefreshCw, Plus, Globe } from "lucide-react";
 import type { Server } from "@shared/schema";
+import type { ServerWithIntelligence } from "@/hooks/use-servers";
 
 export default function Dashboard() {
-  const [selectedServer, setSelectedServer] = useState<Server | null>(null);
+  const [selectedServer, setSelectedServer] = useState<ServerWithIntelligence | null>(null);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -17,11 +18,11 @@ export default function Dashboard() {
   const { data: statsData } = useServers("/api/stats");
   const stats = statsData && 'serversOnline' in statsData ? statsData : undefined;
 
-  const handleServerSelect = (server: Server) => {
+  const handleServerSelect = (server: ServerWithIntelligence) => {
     setSelectedServer(server);
   };
 
-  const handleJoinServer = (server: Server) => {
+  const handleJoinServer = (server: ServerWithIntelligence) => {
     setSelectedServer(server);
     setIsJoinModalOpen(true);
   };

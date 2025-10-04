@@ -116,6 +116,9 @@ export interface ServerFilters {
   tags?: string[];
   favoriteAddresses?: string[];
   recentAddresses?: string[];
+  minQualityScore?: number;
+  hideFraud?: boolean;
+  verifiedOnly?: boolean;
 }
 
 export interface ServerStats {
