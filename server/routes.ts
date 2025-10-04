@@ -264,25 +264,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const idsToFetch = [...freshIds, ...staleIds];
       
       if (idsToFetch.length > 0) {
-        console.log(`[Workshop API] Fetching ${idsToFetch.length} mod(s) from Steam API:`, idsToFetch);
+        console.log(`[Workshop API] Fetching ${idsToFetch.length} mod(s) from Steam API (${freshIds.length} fresh, ${staleIds.length} stale):`, idsToFetch);
         const freshData = await steamWorkshopService.getWorkshopItemDetails(idsToFetch);
         
+        const fetchedIds = new Set(freshData.map(mod => mod.workshopId));
+        const unresolvedFreshIds = freshIds.filter(id => !fetchedIds.has(id));
+        const unresolvedStaleIds = staleIds.filter(id => !fetchedIds.has(id));
+        
+        if (unresolvedFreshIds.length > 0) {
+          console.error(`[Workshop API] Failed to fetch ${unresolvedFreshIds.length} fresh ID(s):`, unresolvedFreshIds);
+          return res.status(502).json({ 
+            error: "Steam Workshop API unavailable", 
+            message: "Unable to fetch mod metadata from Steam. Please try again later.",
+            unresolvedIds: unresolvedFreshIds
+          });
+        }
+        
         if (freshData.length === 0 && idsToFetch.length > 0) {
-          console.error(`[Workshop API] Steam API returned 0 items for ${idsToFetch.length} requested IDs`);
-          if (freshIds.length === idsToFetch.length) {
-            return res.status(502).json({ 
-              error: "Steam Workshop API unavailable", 
-              message: "Unable to fetch mod metadata from Steam. Please try again later."
-            });
-          }
-        } else if (freshData.length < idsToFetch.length) {
-          console.warn(`[Workshop API] Partial response: Got ${freshData.length}/${idsToFetch.length} items from Steam API`);
-        } else {
-          console.log(`[Workshop API] Successfully fetched ${freshData.length} mod(s) from Steam API`);
+          console.error(`[Workshop API] Steam API returned 0 items for ${idsToFetch.length} requested ID(s) - API likely unavailable`);
+          return res.status(502).json({ 
+            error: "Steam Workshop API unavailable", 
+            message: "Unable to fetch mod metadata from Steam. Please try again later."
+          });
         }
         
         if (freshData.length > 0) {
           await storage.cacheWorkshopMods(freshData);
+          console.log(`[Workshop API] Successfully fetched ${freshData.length} mod(s) from Steam API`);
+        }
+        
+        if (unresolvedStaleIds.length > 0) {
+          console.warn(`[Workshop API] Failed to refresh ${unresolvedStaleIds.length} stale ID(s), returning cached data:`, unresolvedStaleIds);
         }
       }
       
