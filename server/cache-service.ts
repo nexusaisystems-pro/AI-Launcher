@@ -1,5 +1,6 @@
 import { storage } from './storage';
 import { a2sService } from './a2s-service';
+import { battleMetricsService } from './battlemetrics-service';
 import type { Server } from '@shared/schema';
 
 export class CacheService {
@@ -112,6 +113,9 @@ export class CacheService {
 
       await this.loadFromDatabase();
       
+      // Enrich top servers with BattleMetrics data
+      await this.enrichTopServersWithBattleMetrics();
+      
       const duration = Date.now() - startTime;
       const successRate = ((updatedServers.length / addresses.length) * 100).toFixed(1);
       console.log(`[Cache] Refresh complete: ${updatedServers.length}/${addresses.length} servers (${successRate}%) in ${(duration / 1000).toFixed(1)}s`);
@@ -121,6 +125,52 @@ export class CacheService {
       console.error('[Cache] Refresh failed:', error);
     } finally {
       this.isRefreshing = false;
+    }
+  }
+
+  async enrichTopServersWithBattleMetrics(topN = 10) {
+    try {
+      // Sort servers by player count (descending) and take top N
+      const topServers = [...this.serverCache]
+        .sort((a, b) => (b.playerCount || 0) - (a.playerCount || 0))
+        .slice(0, topN);
+
+      if (topServers.length === 0) {
+        return;
+      }
+
+      console.log(`[BattleMetrics] Enriching top ${topServers.length} servers...`);
+
+      let enrichedCount = 0;
+      for (const server of topServers) {
+        // Check if we already have recent BM data (24-hour cache)
+        const existingCache = await storage.getBattleMetricsCache(server.id);
+        const cacheAge = existingCache?.cachedAt 
+          ? Date.now() - new Date(existingCache.cachedAt).getTime()
+          : Infinity;
+        
+        const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+
+        if (cacheAge < CACHE_MAX_AGE) {
+          continue; // Skip if cache is fresh
+        }
+
+        // Fetch fresh BattleMetrics data
+        const bmData = await battleMetricsService.searchServerByAddress(server.address);
+        if (bmData) {
+          await storage.cacheBattleMetrics({ ...bmData, serverId: server.id });
+          enrichedCount++;
+          
+          // Small delay to avoid rate limiting (Free tier: 300 req / 5min)
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+      }
+
+      if (enrichedCount > 0) {
+        console.log(`[BattleMetrics] Enriched ${enrichedCount} servers with fresh data`);
+      }
+    } catch (error) {
+      console.error('[BattleMetrics] Enrichment failed:', error);
     }
   }
 

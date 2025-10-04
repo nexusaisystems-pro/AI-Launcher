@@ -7,6 +7,7 @@ import { a2sService } from "./a2s-service";
 import { cacheService } from "./cache-service";
 import { steamWorkshopService } from "./steam-workshop-service";
 import { battleMetricsService } from "./battlemetrics-service";
+import { serverIntelligence } from "./server-intelligence";
 
 const serverFiltersSchema = z.object({
   map: z.string().optional(),
@@ -27,7 +28,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const filters = req.query.filters ? JSON.parse(req.query.filters as string) : undefined;
       const validatedFilters = filters ? serverFiltersSchema.parse(filters) : undefined;
+      const includeIntelligence = req.query.intelligence === 'true';
+      
       const servers = await storage.getServers(validatedFilters);
+      
+      if (includeIntelligence) {
+        // Enrich servers with BattleMetrics intelligence
+        const enrichedServers = await Promise.all(
+          servers.map(async (server) => {
+            const bmData = await storage.getBattleMetricsCache(server.id);
+            const quality = serverIntelligence.calculateQualityScore(server, bmData);
+            
+            return {
+              ...server,
+              intelligence: {
+                qualityScore: quality.score,
+                grade: quality.grade,
+                verified: quality.verified,
+                trustIndicators: quality.trustIndicators,
+                fraudFlags: quality.fraudFlags,
+                battlemetricsRank: bmData?.rank || null,
+                battlemetricsStatus: bmData?.status || null,
+              }
+            };
+          })
+        );
+        return res.json(enrichedServers);
+      }
+      
       res.json(servers);
     } catch (error) {
       res.status(400).json({ error: "Invalid filters provided" });
