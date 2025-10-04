@@ -61,6 +61,7 @@ export const workshopMods = pgTable("workshop_mods", {
 export const battlemetricsCache = pgTable("battlemetrics_cache", {
   serverId: varchar("server_id", { length: 50 }).primaryKey(),
   serverAddress: varchar("server_address", { length: 50 }).notNull(),
+  serverName: varchar("server_name", { length: 255 }),
   battlemetricsId: varchar("battlemetrics_id", { length: 50 }),
   rank: integer("rank"),
   uptimePercent7d: integer("uptime_percent_7d"),

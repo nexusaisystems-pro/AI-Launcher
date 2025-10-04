@@ -123,6 +123,7 @@ export class BattleMetricsService {
     return {
       serverId: server.id,
       serverAddress,
+      serverName: attrs.name || null,
       battlemetricsId: server.id,
       rank: attrs.rank || 0,
       uptimePercent7d: null,

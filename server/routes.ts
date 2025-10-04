@@ -49,6 +49,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 fraudFlags: quality.fraudFlags,
                 battlemetricsRank: bmData?.rank || null,
                 battlemetricsStatus: bmData?.status || null,
+                battlemetricsId: bmData?.battlemetricsId || null,
+                battlemetricsName: bmData?.serverName || null,
+                cacheAge: bmData?.cachedAt 
+                  ? Math.floor((Date.now() - new Date(bmData.cachedAt).getTime()) / (1000 * 60 * 60)) // hours
+                  : null,
               }
             };
           })

@@ -59,19 +59,28 @@ export class ServerIntelligence {
   ): number {
     let score = 100;
 
-    // Penalty for fraud flags
+    // Check BM cache freshness - reduce penalties for stale data
+    const cacheAge = bmData.cachedAt 
+      ? Date.now() - new Date(bmData.cachedAt).getTime()
+      : Infinity;
+    const FRESH_CACHE_THRESHOLD = 6 * 60 * 60 * 1000; // 6 hours
+    const cacheFreshnessFactor = cacheAge < FRESH_CACHE_THRESHOLD ? 1.0 : 0.5; // Half penalties for stale cache
+
+    // Penalty for fraud flags (reduced for stale BM data)
     fraudFlags.forEach(flag => {
+      let penalty = 0;
       switch (flag.severity) {
         case "high":
-          score -= 30;
+          penalty = 30;
           break;
         case "medium":
-          score -= 15;
+          penalty = 15;
           break;
         case "low":
-          score -= 5;
+          penalty = 5;
           break;
       }
+      score -= Math.floor(penalty * cacheFreshnessFactor);
     });
 
     // Factor 1: BattleMetrics Rank (40% weight)
