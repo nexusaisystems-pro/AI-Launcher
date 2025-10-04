@@ -39,6 +39,12 @@ Preferred communication style: Simple, everyday language.
 - Join modal with multi-step mod validation and download simulation
 - Quick filters and saved filter presets
 - Neon glassmorphism UI with animated backgrounds and smooth transitions
+- **Server Intelligence Integration** (October 2025):
+  - Quality grade badges (S/A/B/C/D/F) with color-coded visual hierarchy
+  - Animated trust score rings showing server reliability (0-100 scale)
+  - Fraud detection warnings for servers with suspicious metrics
+  - Intelligence tab in detail panel with comprehensive trust metrics
+  - Quality-based filtering and sorting options
 
 ### Backend Architecture
 
