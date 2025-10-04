@@ -1,11 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Wifi, Clock, Lock, Shield } from "lucide-react";
+import { Users, Wifi, Clock, Lock, Shield, AlertTriangle, Award, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Server } from "@shared/schema";
+import type { ServerWithIntelligence } from "@/hooks/use-servers";
 
 interface ServerCardProps {
-  server: Server;
+  server: ServerWithIntelligence;
   isSelected: boolean;
   onSelect: () => void;
   onJoin: () => void;
@@ -35,34 +36,100 @@ export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardP
     return `${mb.toFixed(0)} MB`;
   };
 
+  const getGradeColor = (grade: string) => {
+    switch (grade) {
+      case "S": return "hsl(280, 75%, 65%)"; // purple
+      case "A": return "hsl(145, 75%, 50%)"; // green
+      case "B": return "hsl(190, 85%, 55%)"; // cyan
+      case "C": return "hsl(40, 90%, 55%)"; // amber
+      case "D": return "hsl(25, 85%, 55%)"; // orange
+      case "F": return "hsl(0, 85%, 60%)"; // red
+      default: return "hsl(220, 10%, 70%)"; // gray
+    }
+  };
+
+  const getTrustScoreColor = (score: number) => {
+    if (score >= 76) return "hsl(145, 75%, 50%)"; // green
+    if (score >= 51) return "hsl(40, 90%, 55%)"; // amber
+    return "hsl(0, 85%, 60%)"; // red
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case "rising": return <TrendingUp className="w-3 h-3" />;
+      case "declining": return <TrendingDown className="w-3 h-3" />;
+      default: return <Minus className="w-3 h-3" />;
+    }
+  };
+
   const totalModSize = (server.mods ?? []).reduce((sum, mod) => sum + mod.size, 0);
   const playerPercentage = ((server.playerCount ?? 0) / (server.maxPlayers ?? 1)) * 100;
   const radius = 28;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (playerPercentage / 100) * circumference;
 
+  const trustRadius = 24;
+  const trustCircumference = 2 * Math.PI * trustRadius;
+  const trustScore = server.intelligence?.qualityScore ?? 50;
+  const trustDashoffset = trustCircumference - (trustScore / 100) * trustCircumference;
+
   return (
     <div 
-      className={`server-card gradient-border rounded-xl p-5 ${isSelected ? 'selected' : ''}`}
+      className={`server-card gradient-border rounded-xl p-5 ${isSelected ? 'selected' : ''} relative`}
       onClick={onSelect}
       data-testid={`card-server-${server.address}`}
     >
+      {/* Fraud Warning Banner */}
+      {server.intelligence && server.intelligence.fraudFlags.length > 0 && (
+        <div className="absolute -top-2 left-6 right-6 bg-destructive/20 border border-destructive/50 rounded-lg px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm z-10">
+          <AlertTriangle className="w-4 h-4 text-destructive animate-pulse" />
+          <span className="text-xs font-semibold text-destructive">
+            {server.intelligence.fraudFlags[0].evidence}
+          </span>
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-6">
         {/* Server Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-4 mb-3">
-            <div className="relative w-14 h-14 flex-shrink-0">
-              <div className="w-14 h-14 holographic rounded-xl flex items-center justify-center border border-primary/40 neon-border">
-                <span className="text-xl font-bold font-display text-primary-glow">
-                  {getServerInitials(server.name)}
+            {/* Grade Badge */}
+            {server.intelligence && (
+              <div 
+                className="relative w-14 h-14 flex-shrink-0 rounded-xl flex items-center justify-center border-2"
+                style={{ 
+                  borderColor: getGradeColor(server.intelligence.grade),
+                  backgroundColor: getGradeColor(server.intelligence.grade) + '20',
+                  boxShadow: `0 0 20px ${getGradeColor(server.intelligence.grade)}40`
+                }}
+                data-testid={`badge-grade-${server.address}`}
+              >
+                <span className="text-2xl font-black font-display" style={{ color: getGradeColor(server.intelligence.grade) }}>
+                  {server.intelligence.grade}
                 </span>
+                {server.intelligence.verified && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-background flex items-center justify-center" style={{ backgroundColor: 'hsl(190, 95%, 55%)' }}>
+                    <Shield className="w-3 h-3 text-background" />
+                  </div>
+                )}
               </div>
-              {server.verified && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-success rounded-full border-2 border-background flex items-center justify-center neon-glow">
-                  <Shield className="w-3 h-3 text-background" />
+            )}
+            
+            {/* Fallback when no intelligence */}
+            {!server.intelligence && (
+              <div className="relative w-14 h-14 flex-shrink-0">
+                <div className="w-14 h-14 holographic rounded-xl flex items-center justify-center border border-primary/40 neon-border">
+                  <span className="text-xl font-bold font-display text-primary-glow">
+                    {getServerInitials(server.name)}
+                  </span>
                 </div>
-              )}
-            </div>
+                {server.verified && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-success rounded-full border-2 border-background flex items-center justify-center neon-glow">
+                    <Shield className="w-3 h-3 text-background" />
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
                 <h3 className="text-lg font-bold font-display text-foreground truncate" data-testid={`text-server-name-${server.address}`}>
@@ -108,6 +175,52 @@ export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardP
 
         {/* Server Stats */}
         <div className="flex items-center gap-8 flex-shrink-0">
+          {/* Trust Score Ring (if intelligence available) */}
+          {server.intelligence && (
+            <div className="text-center relative">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Trust</div>
+              <div className="relative w-20 h-20 flex items-center justify-center">
+                <svg className="progress-ring absolute inset-0 -rotate-90" width="80" height="80">
+                  <circle
+                    className="text-card-elevated"
+                    strokeWidth="4"
+                    stroke="currentColor"
+                    fill="transparent"
+                    r={trustRadius}
+                    cx="40"
+                    cy="40"
+                  />
+                  <circle
+                    className="transition-all duration-1000"
+                    strokeWidth="4"
+                    strokeDasharray={trustCircumference}
+                    strokeDashoffset={trustDashoffset}
+                    strokeLinecap="round"
+                    fill="transparent"
+                    r={trustRadius}
+                    cx="40"
+                    cy="40"
+                    stroke={getTrustScoreColor(trustScore)}
+                  />
+                </svg>
+                <div className="relative z-10 text-center">
+                  <div className="text-lg font-bold font-display" style={{ color: getTrustScoreColor(trustScore) }} data-testid={`text-trust-score-${server.address}`}>
+                    {trustScore}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground uppercase">
+                    Score
+                  </div>
+                </div>
+              </div>
+              {server.intelligence.trustIndicators.rank && (
+                <div className="mt-1 flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
+                  {getTrendIcon(server.intelligence.trustIndicators.trend)}
+                  <span>#{server.intelligence.trustIndicators.rank}</span>
+                </div>
+              )}
+            </div>
+          )}
+          
           {/* Players with Progress Ring */}
           <div className="text-center relative">
             <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Players</div>

@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  const { data: servers = [], isLoading, refetch } = useServers();
+  const { data: servers = [], isLoading, refetch } = useServers("/api/servers", undefined, true);
   const { data: statsData } = useServers("/api/stats");
   const stats = statsData && 'serversOnline' in statsData ? statsData : undefined;
 
