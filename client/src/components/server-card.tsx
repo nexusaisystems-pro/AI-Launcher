@@ -75,243 +75,254 @@ export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardP
 
   return (
     <div 
-      className={`server-card gradient-border rounded-xl p-5 ${isSelected ? 'selected' : ''} relative`}
+      className={`server-card gradient-border rounded-xl p-6 ${isSelected ? 'selected' : ''} relative space-y-5`}
       onClick={onSelect}
       data-testid={`card-server-${server.address}`}
     >
-      {/* Fraud Warning Banner */}
-      {server.intelligence && server.intelligence.fraudFlags.length > 0 && (
-        <div className="absolute -top-2 left-6 right-6 bg-destructive/20 border border-destructive/50 rounded-lg px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm z-10">
-          <AlertTriangle className="w-4 h-4 text-destructive animate-pulse" />
-          <span className="text-xs font-semibold text-destructive">
-            {server.intelligence.fraudFlags[0].evidence}
-          </span>
-        </div>
-      )}
-
-      <div className="flex items-start justify-between gap-6">
-        {/* Server Info */}
+      {/* Server Name - Prominent Header */}
+      <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-start gap-4 mb-3">
-            {/* Grade Badge */}
-            {server.intelligence && (
-              <div 
-                className="relative w-14 h-14 flex-shrink-0 rounded-xl flex items-center justify-center border-2"
-                style={{ 
-                  borderColor: getGradeColor(server.intelligence.grade),
-                  backgroundColor: getGradeColor(server.intelligence.grade) + '20',
-                  boxShadow: `0 0 20px ${getGradeColor(server.intelligence.grade)}40`
-                }}
-                data-testid={`badge-grade-${server.address}`}
-              >
-                <span className="text-2xl font-black font-display" style={{ color: getGradeColor(server.intelligence.grade) }}>
-                  {server.intelligence.grade}
-                </span>
-                {server.intelligence.verified && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-background flex items-center justify-center" style={{ backgroundColor: 'hsl(190, 95%, 55%)' }}>
-                    <Shield className="w-3 h-3 text-background" />
-                  </div>
-                )}
-              </div>
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="text-2xl font-bold font-display text-foreground truncate" data-testid={`text-server-name-${server.address}`}>
+              {server.name}
+            </h3>
+            {server.passwordProtected && (
+              <Lock className="w-5 h-5 text-warning flex-shrink-0" />
             )}
-            
-            {/* Fallback when no intelligence */}
-            {!server.intelligence && (
-              <div className="relative w-14 h-14 flex-shrink-0">
-                <div className="w-14 h-14 holographic rounded-xl flex items-center justify-center border border-primary/40 neon-border">
-                  <span className="text-xl font-bold font-display text-primary-glow">
-                    {getServerInitials(server.name)}
-                  </span>
-                </div>
-                {server.verified && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-success rounded-full border-2 border-background flex items-center justify-center neon-glow">
-                    <Shield className="w-3 h-3 text-background" />
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1.5">
-                <h3 className="text-lg font-bold font-display text-foreground truncate" data-testid={`text-server-name-${server.address}`}>
-                  {server.name}
-                </h3>
-                {server.passwordProtected && (
-                  <Lock className="w-4 h-4 text-warning flex-shrink-0" />
-                )}
-              </div>
-              <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
-                <span className="mono font-medium" data-testid={`text-server-ip-${server.address}`}>{server.address}</span>
-                <span className="w-1 h-1 rounded-full bg-primary/50"></span>
-                <span className="uppercase tracking-wide" data-testid={`text-server-region-${server.address}`}>{server.region}</span>
-                <span className="w-1 h-1 rounded-full bg-primary/50"></span>
-                <span className="mono" data-testid={`text-server-version-${server.address}`}>{server.version}</span>
-              </div>
-            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="badge-primary">
-              <Wifi className="w-3 h-3 mr-1" />
-              {server.map}
-            </Badge>
-            <Badge variant="secondary" className="badge-secondary">
-              {server.perspective ?? "Unknown"}
-            </Badge>
-            {(server.mods ?? []).length > 0 ? (
-              <Badge variant="secondary" className="holographic border border-primary/30">
-                <span className="font-semibold">{(server.mods ?? []).length}</span> MODS • {formatBytes(totalModSize)}
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="badge-success">
-                VANILLA
-              </Badge>
-            )}
-            {server.lastWipe && (
-              <span className="text-xs text-muted-foreground font-medium">
-                Wiped {formatDistanceToNow(new Date(server.lastWipe), { addSuffix: true })}
-              </span>
-            )}
+          <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+            <span className="mono font-medium" data-testid={`text-server-ip-${server.address}`}>{server.address}</span>
+            <span className="w-1 h-1 rounded-full bg-primary/50"></span>
+            <span className="uppercase tracking-wide" data-testid={`text-server-region-${server.address}`}>{server.region}</span>
+            <span className="w-1 h-1 rounded-full bg-primary/50"></span>
+            <span className="mono" data-testid={`text-server-version-${server.address}`}>{server.version}</span>
           </div>
         </div>
 
-        {/* Server Stats */}
-        <div className="flex items-center gap-8 flex-shrink-0">
-          {/* Trust Score Ring (if intelligence available) */}
-          {server.intelligence && (
-            <div className="text-center relative">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Trust</div>
-              <div className="relative w-20 h-20 flex items-center justify-center">
-                <svg className="progress-ring absolute inset-0 -rotate-90" width="80" height="80">
-                  <circle
-                    className="text-card-elevated"
-                    strokeWidth="4"
-                    stroke="currentColor"
-                    fill="transparent"
-                    r={trustRadius}
-                    cx="40"
-                    cy="40"
-                  />
-                  <circle
-                    className="transition-all duration-1000"
-                    strokeWidth="4"
-                    strokeDasharray={trustCircumference}
-                    strokeDashoffset={trustDashoffset}
-                    strokeLinecap="round"
-                    fill="transparent"
-                    r={trustRadius}
-                    cx="40"
-                    cy="40"
-                    stroke={getTrustScoreColor(trustScore)}
-                  />
-                </svg>
-                <div className="relative z-10 text-center">
-                  <div className="text-lg font-bold font-display" style={{ color: getTrustScoreColor(trustScore) }} data-testid={`text-trust-score-${server.address}`}>
-                    {trustScore}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground uppercase">
-                    Score
-                  </div>
-                </div>
+        {/* Grade Badge */}
+        {server.intelligence && (
+          <div 
+            className="relative w-16 h-16 flex-shrink-0 rounded-xl flex items-center justify-center border-2"
+            style={{ 
+              borderColor: getGradeColor(server.intelligence.grade),
+              backgroundColor: getGradeColor(server.intelligence.grade) + '20',
+              boxShadow: `0 0 20px ${getGradeColor(server.intelligence.grade)}40`
+            }}
+            data-testid={`badge-grade-${server.address}`}
+          >
+            <span className="text-3xl font-black font-display" style={{ color: getGradeColor(server.intelligence.grade) }}>
+              {server.intelligence.grade}
+            </span>
+            {server.intelligence.verified && (
+              <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-background flex items-center justify-center" style={{ backgroundColor: 'hsl(190, 95%, 55%)' }}>
+                <Shield className="w-3 h-3 text-background" />
               </div>
-              {server.intelligence.trustIndicators.rank && (
-                <div className="mt-1 flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
-                  {getTrendIcon(server.intelligence.trustIndicators.trend)}
-                  <span>#{server.intelligence.trustIndicators.rank}</span>
-                </div>
-              )}
+            )}
+          </div>
+        )}
+        
+        {/* Fallback when no intelligence */}
+        {!server.intelligence && (
+          <div className="relative w-16 h-16 flex-shrink-0">
+            <div className="w-16 h-16 holographic rounded-xl flex items-center justify-center border border-primary/40 neon-border">
+              <span className="text-xl font-bold font-display text-primary-glow">
+                {getServerInitials(server.name)}
+              </span>
             </div>
-          )}
-          
-          {/* Players with Progress Ring */}
+            {server.verified && (
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-success rounded-full border-2 border-background flex items-center justify-center neon-glow">
+                <Shield className="w-3 h-3 text-background" />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Server Info Badges */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant="secondary" className="badge-primary">
+          <Wifi className="w-3 h-3 mr-1" />
+          {server.map}
+        </Badge>
+        <Badge variant="secondary" className="badge-secondary">
+          {server.perspective ?? "Unknown"}
+        </Badge>
+        {(server.mods ?? []).length > 0 ? (
+          <Badge variant="secondary" className="holographic border border-primary/30">
+            <span className="font-semibold">{(server.mods ?? []).length}</span> MODS • {formatBytes(totalModSize)}
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="badge-success">
+            VANILLA
+          </Badge>
+        )}
+        {server.lastWipe && (
+          <span className="text-xs text-muted-foreground font-medium">
+            Wiped {formatDistanceToNow(new Date(server.lastWipe), { addSuffix: true })}
+          </span>
+        )}
+      </div>
+
+      {/* Server Stats */}
+      <div className="flex items-center gap-6 flex-wrap">
+        {/* Trust Score Ring (if intelligence available) */}
+        {server.intelligence && (
           <div className="text-center relative">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Players</div>
-            <div className="relative w-28 h-28 flex items-center justify-center">
-              <svg className="progress-ring absolute inset-0" width="112" height="112">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Trust</div>
+            <div className="relative w-20 h-20 flex items-center justify-center">
+              <svg className="progress-ring absolute inset-0 -rotate-90" width="80" height="80">
                 <circle
                   className="text-card-elevated"
-                  strokeWidth="5"
+                  strokeWidth="4"
                   stroke="currentColor"
                   fill="transparent"
-                  r={radius}
-                  cx="56"
-                  cy="56"
+                  r={trustRadius}
+                  cx="40"
+                  cy="40"
                 />
                 <circle
-                  className="progress-ring-circle"
-                  strokeWidth="5"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
+                  className="transition-all duration-1000"
+                  strokeWidth="4"
+                  strokeDasharray={trustCircumference}
+                  strokeDashoffset={trustDashoffset}
                   strokeLinecap="round"
                   fill="transparent"
-                  r={radius}
-                  cx="56"
-                  cy="56"
+                  r={trustRadius}
+                  cx="40"
+                  cy="40"
+                  stroke={getTrustScoreColor(trustScore)}
                 />
               </svg>
               <div className="relative z-10 text-center">
-                <div className="text-2xl font-bold font-display text-primary-glow" data-testid={`text-player-count-${server.address}`}>
-                  {server.playerCount ?? 0}
+                <div className="text-lg font-bold font-display" style={{ color: getTrustScoreColor(trustScore) }} data-testid={`text-trust-score-${server.address}`}>
+                  {trustScore}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  / <span data-testid={`text-max-players-${server.address}`}>{server.maxPlayers ?? 0}</span>
+                <div className="text-[10px] text-muted-foreground uppercase">
+                  Score
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Ping */}
-          <div className="text-center">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Ping</div>
-            <div className="glass-card px-4 py-3 rounded-lg neon-border">
-              <div className="flex items-center gap-2 justify-center mb-1">
-                <span className={`status-dot ${getPingStatus(server.ping ?? 0)}`}></span>
-                <span className={`text-2xl font-bold font-display ${getPingColor(server.ping ?? 0)}`} data-testid={`text-ping-${server.address}`}>
-                  {server.ping ?? 0}
-                </span>
+            {server.intelligence.trustIndicators.rank && (
+              <div className="mt-1 flex items-center justify-center gap-1 text-[10px] text-muted-foreground">
+                {getTrendIcon(server.intelligence.trustIndicators.trend)}
+                <span>#{server.intelligence.trustIndicators.rank}</span>
               </div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">ms</div>
-            </div>
+            )}
           </div>
-
-          {/* Queue */}
-          <div className="text-center">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Queue</div>
-            <div className="glass-card px-4 py-3 rounded-lg border border-border-subtle">
-              <div className="flex items-center gap-2 justify-center mb-1">
-                <Clock className="w-4 h-4 text-warning" />
-                <span className="text-2xl font-bold font-display text-foreground" data-testid={`text-queue-${server.address}`}>
-                  {server.queue ?? 0}
-                </span>
+        )}
+        
+        {/* Players with Progress Ring */}
+        <div className="text-center relative">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Players</div>
+          <div className="relative w-24 h-24 flex items-center justify-center">
+            <svg className="progress-ring absolute inset-0" width="96" height="96">
+              <circle
+                className="text-card-elevated"
+                strokeWidth="5"
+                stroke="currentColor"
+                fill="transparent"
+                r={radius}
+                cx="48"
+                cy="48"
+              />
+              <circle
+                className="progress-ring-circle"
+                strokeWidth="5"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                fill="transparent"
+                r={radius}
+                cx="48"
+                cy="48"
+              />
+            </svg>
+            <div className="relative z-10 text-center">
+              <div className="text-2xl font-bold font-display text-primary-glow" data-testid={`text-player-count-${server.address}`}>
+                {server.playerCount ?? 0}
               </div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">waiting</div>
+              <div className="text-xs text-muted-foreground">
+                / <span data-testid={`text-max-players-${server.address}`}>{server.maxPlayers ?? 0}</span>
+              </div>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col gap-2.5">
-            <Button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onJoin();
-              }}
-              className="btn-primary px-8 py-3 text-sm font-bold font-display uppercase tracking-wider whitespace-nowrap"
-              data-testid={`button-join-${server.address}`}
-            >
-              Join Server
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect();
-              }}
-              className="glass border-primary/30 hover:border-primary/50 text-foreground px-8 py-2 text-sm font-semibold uppercase tracking-wide whitespace-nowrap transition-all hover:neon-glow"
-              data-testid={`button-details-${server.address}`}
-            >
-              Details
-            </Button>
           </div>
         </div>
+
+        {/* Ping */}
+        <div className="text-center">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Ping</div>
+          <div className="glass-card px-4 py-3 rounded-lg neon-border">
+            <div className="flex items-center gap-2 justify-center mb-1">
+              <span className={`status-dot ${getPingStatus(server.ping ?? 0)}`}></span>
+              <span className={`text-2xl font-bold font-display ${getPingColor(server.ping ?? 0)}`} data-testid={`text-ping-${server.address}`}>
+                {server.ping ?? 0}
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">ms</div>
+          </div>
+        </div>
+
+        {/* Queue */}
+        <div className="text-center">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Queue</div>
+          <div className="glass-card px-4 py-3 rounded-lg border border-border-subtle">
+            <div className="flex items-center gap-2 justify-center mb-1">
+              <Clock className="w-4 h-4 text-warning" />
+              <span className="text-2xl font-bold font-display text-foreground" data-testid={`text-queue-${server.address}`}>
+                {server.queue ?? 0}
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">waiting</div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2.5 ml-auto">
+          <Button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onJoin();
+            }}
+            className="btn-primary px-8 py-3 text-sm font-bold font-display uppercase tracking-wider whitespace-nowrap"
+            data-testid={`button-join-${server.address}`}
+          >
+            Join Server
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+            className="glass border-primary/30 hover:border-primary/50 text-foreground px-8 py-2 text-sm font-semibold uppercase tracking-wide whitespace-nowrap transition-all hover:neon-glow"
+            data-testid={`button-details-${server.address}`}
+          >
+            Details
+          </Button>
+        </div>
       </div>
+
+      {/* A2S Fraud Reports - Bottom Section */}
+      {server.intelligence && server.intelligence.fraudFlags.length > 0 && (
+        <div className="pt-3 border-t border-border/50">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-3 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-xs font-bold text-destructive uppercase tracking-wide mb-1">
+                A2S Report
+              </div>
+              <div className="text-sm text-foreground">
+                {server.intelligence.fraudFlags[0].evidence}
+              </div>
+              {server.intelligence.fraudFlags.length > 1 && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  +{server.intelligence.fraudFlags.length - 1} more issue{server.intelligence.fraudFlags.length > 2 ? 's' : ''}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
