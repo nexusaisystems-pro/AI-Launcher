@@ -91,6 +91,7 @@ Preferred communication style: Simple, everyday language.
 - **Servers**: Core server information (address, name, map, players, mods, region, etc.)
 - **Server Analytics**: Time-series data for tracking server health and player counts
 - **User Preferences**: Session-based user settings, favorites, and filter preferences
+- **Workshop Mods** (Added October 2025): Cached Steam Workshop mod metadata (title, description, fileSize, previewUrl, tags, creator, subscriberCount) with 7-day cache freshness
 - JSON fields for complex data (mods array, tags, filters)
 
 **Current Implementation**
@@ -115,6 +116,13 @@ Preferred communication style: Simple, everyday language.
 ### External Dependencies
 
 **Steam Integration**
+- **Steam Workshop API Integration** (October 2025):
+  - Real mod metadata fetching (titles, descriptions, file sizes, thumbnails, subscriber counts)
+  - PostgreSQL caching layer with 7-day freshness checks
+  - Intelligent error handling with 502 responses when Steam API unavailable
+  - Backend service (`SteamWorkshopService`) for API communication
+  - Frontend hook (`useWorkshopMods`) for React Query integration
+  - Enhanced mod display in Server Detail Panel with Workshop links
 - Steam Workshop for mod downloads and management
 - Steam launch protocol (`steam://rungameid/221100`) for game launching
 - Workshop URLs constructed from mod workshop IDs
