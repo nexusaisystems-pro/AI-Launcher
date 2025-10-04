@@ -264,7 +264,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const idsToFetch = [...freshIds, ...staleIds];
       
       if (idsToFetch.length > 0) {
+        console.log(`[Workshop API] Fetching ${idsToFetch.length} mod(s) from Steam API:`, idsToFetch);
         const freshData = await steamWorkshopService.getWorkshopItemDetails(idsToFetch);
+        
+        if (freshData.length === 0 && idsToFetch.length > 0) {
+          console.error(`[Workshop API] Steam API returned 0 items for ${idsToFetch.length} requested IDs`);
+          if (freshIds.length === idsToFetch.length) {
+            return res.status(502).json({ 
+              error: "Steam Workshop API unavailable", 
+              message: "Unable to fetch mod metadata from Steam. Please try again later."
+            });
+          }
+        } else if (freshData.length < idsToFetch.length) {
+          console.warn(`[Workshop API] Partial response: Got ${freshData.length}/${idsToFetch.length} items from Steam API`);
+        } else {
+          console.log(`[Workshop API] Successfully fetched ${freshData.length} mod(s) from Steam API`);
+        }
+        
         if (freshData.length > 0) {
           await storage.cacheWorkshopMods(freshData);
         }

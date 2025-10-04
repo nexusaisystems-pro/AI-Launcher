@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Play, Heart, Copy, Zap, Users, Globe } from "lucide-react";
+import { X, Play, Heart, Copy, Zap, Users, Globe, ExternalLink, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkshopMods } from "@/hooks/use-workshop-mods";
 import type { Server } from "@shared/schema";
 
 interface ServerDetailPanelProps {
@@ -16,6 +17,12 @@ interface ServerDetailPanelProps {
 export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanelProps) {
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const { toast } = useToast();
+  
+  const workshopIds = (server.mods ?? [])
+    .map(mod => mod.workshopId)
+    .filter((id): id is string => !!id);
+  
+  const { data: workshopMods, isLoading: isLoadingWorkshop } = useWorkshopMods(workshopIds);
 
   const handleToggleFavorite = () => {
     if (isFavorite(server.address)) {
@@ -208,30 +215,84 @@ export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanel
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {(server.mods ?? []).map((mod) => (
-                    <div key={mod.id} className="bg-secondary rounded-lg p-3 flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium text-foreground truncate">
-                            {mod.name}
-                          </span>
-                          <Badge 
-                            variant="secondary" 
-                            className={mod.installed ? "badge-success" : "badge-warning"}
-                          >
-                            {mod.installed ? "Installed" : "Update Available"}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground mono">
-                          @{mod.id} {mod.workshopId && `(Workshop: ${mod.workshopId})`}
+                <div className="space-y-3">
+                  {(server.mods ?? []).map((mod) => {
+                    const workshopData = Array.isArray(workshopMods) 
+                      ? workshopMods.find(w => w.workshopId === mod.workshopId)
+                      : undefined;
+                    const hasWorkshopData = !!workshopData;
+                    
+                    return (
+                      <div 
+                        key={mod.id} 
+                        className={`bg-secondary rounded-lg overflow-hidden ${hasWorkshopData ? 'border border-primary/20' : ''}`}
+                      >
+                        <div className="flex gap-3 p-3">
+                          {hasWorkshopData && workshopData.previewUrl && (
+                            <div className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-background/50">
+                              <img 
+                                src={workshopData.previewUrl} 
+                                alt={workshopData.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className="flex-1 min-w-0">
+                                <h5 className="text-sm font-semibold text-foreground truncate">
+                                  {hasWorkshopData ? workshopData.title : mod.name}
+                                </h5>
+                                {hasWorkshopData && workshopData.description && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                    {workshopData.description.substring(0, 100)}...
+                                  </p>
+                                )}
+                              </div>
+                              <Badge 
+                                variant="secondary" 
+                                className={mod.installed ? "badge-success flex-shrink-0" : "badge-warning flex-shrink-0"}
+                              >
+                                {mod.installed ? "Installed" : "Required"}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <span className="mono">@{mod.id}</span>
+                              {hasWorkshopData && workshopData.fileSize && (
+                                <span className="flex items-center gap-1">
+                                  <Download className="w-3 h-3" />
+                                  {formatBytes(workshopData.fileSize)}
+                                </span>
+                              )}
+                              {hasWorkshopData && workshopData.subscriberCount && (
+                                <span>{workshopData.subscriberCount.toLocaleString()} subscribers</span>
+                              )}
+                              {mod.workshopId && (
+                                <a
+                                  href={`https://steamcommunity.com/sharedfiles/filedetails/?id=${mod.workshopId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 hover:text-primary transition-colors"
+                                  data-testid={`link-workshop-${mod.id}`}
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Workshop
+                                </a>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-xs text-muted-foreground ml-3">
-                        {formatBytes(mod.size)}
-                      </div>
+                    );
+                  })}
+                  
+                  {isLoadingWorkshop && workshopIds.length > 0 && (
+                    <div className="text-xs text-muted-foreground text-center py-2">
+                      Loading mod details from Steam Workshop...
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>

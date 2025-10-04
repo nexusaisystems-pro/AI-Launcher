@@ -51,6 +51,7 @@ export class SteamWorkshopService {
 
     try {
       const formData = new URLSearchParams();
+      formData.append('key', STEAM_API_KEY);
       formData.append('itemcount', workshopIds.length.toString());
       
       workshopIds.forEach((id, index) => {
