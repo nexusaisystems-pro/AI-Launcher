@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { FilterSidebar } from "./filter-sidebar";
 import { ServerCard } from "./server-card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export function ServerBrowser({
   const [filters, setFilters] = useState<ServerFilters>({});
   const [sortBy, setSortBy] = useState("players");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // Filter and search servers (memoized for performance)
   const filteredServers = useMemo(() => servers.filter(server => {
@@ -110,6 +112,32 @@ export function ServerBrowser({
     }
   }), [filteredServers, sortBy]);
 
+  // Virtualization for large lists (only in list view)
+  const virtualizer = useVirtualizer({
+    count: sortedServers.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 200,
+    overscan: 5,
+    enabled: viewMode === "list",
+  });
+
+  // Create stable memoized handler maps to prevent unnecessary re-renders
+  const selectHandlers = useMemo(() => {
+    const handlers = new Map<string, () => void>();
+    sortedServers.forEach(server => {
+      handlers.set(server.address, () => onServerSelect(server));
+    });
+    return handlers;
+  }, [sortedServers, onServerSelect]);
+
+  const joinHandlers = useMemo(() => {
+    const handlers = new Map<string, () => void>();
+    sortedServers.forEach(server => {
+      handlers.set(server.address, () => onServerJoin(server));
+    });
+    return handlers;
+  }, [sortedServers, onServerJoin]);
+
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* Filter Sidebar */}
@@ -169,7 +197,7 @@ export function ServerBrowser({
         </div>
 
         {/* Server Cards List */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div ref={parentRef} className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -189,15 +217,49 @@ export function ServerBrowser({
                 <p className="text-muted-foreground">Try adjusting your filters or search terms</p>
               </div>
             </div>
+          ) : viewMode === "list" ? (
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const server = sortedServers[virtualItem.index];
+                return (
+                  <div
+                    key={server.address}
+                    data-index={virtualItem.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                    className="pb-3"
+                  >
+                    <ServerCard
+                      server={server}
+                      isSelected={selectedServer?.address === server.address}
+                      onSelect={selectHandlers.get(server.address)!}
+                      onJoin={joinHandlers.get(server.address)!}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedServers.map((server) => (
                 <ServerCard
                   key={server.address}
                   server={server}
                   isSelected={selectedServer?.address === server.address}
-                  onSelect={() => onServerSelect(server)}
-                  onJoin={() => onServerJoin(server)}
+                  onSelect={selectHandlers.get(server.address)!}
+                  onJoin={joinHandlers.get(server.address)!}
                 />
               ))}
             </div>
