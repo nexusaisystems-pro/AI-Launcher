@@ -72,6 +72,16 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
     emblaApi.on("reInit", onSelect);
   }, [emblaApi, onSelect]);
 
+  const uniqueRecommendations = useMemo(() => {
+    if (!recommendations?.recommendations) return [];
+    return recommendations.recommendations.reduce((acc, rec) => {
+      if (!acc.find(r => r.serverAddress === rec.serverAddress)) {
+        acc.push(rec);
+      }
+      return acc;
+    }, [] as typeof recommendations.recommendations);
+  }, [recommendations]);
+
   if (error) {
     return (
       <Card className="bg-black/40 border-red-500/30 backdrop-blur-md" data-testid="card-recommendations-error">
@@ -106,16 +116,6 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
       </Card>
     );
   }
-
-  const uniqueRecommendations = useMemo(() => {
-    if (!recommendations?.recommendations) return [];
-    return recommendations.recommendations.reduce((acc, rec) => {
-      if (!acc.find(r => r.serverAddress === rec.serverAddress)) {
-        acc.push(rec);
-      }
-      return acc;
-    }, [] as typeof recommendations.recommendations);
-  }, [recommendations]);
 
   if (!recommendations || recommendations.recommendations.length === 0) {
     return (
