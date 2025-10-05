@@ -8,6 +8,7 @@ import { cacheService } from "./cache-service";
 import { steamWorkshopService } from "./steam-workshop-service";
 import { battleMetricsService } from "./battlemetrics-service";
 import { serverIntelligence } from "./server-intelligence";
+import { OpenAIService, type RecommendationResponse } from "./openai-service";
 
 const serverFiltersSchema = z.object({
   map: z.string().optional(),
@@ -21,6 +22,10 @@ const serverFiltersSchema = z.object({
   modCount: z.enum(["vanilla", "1-10", "10+"]).optional(),
   tags: z.array(z.string()).optional(),
 });
+
+// Simple in-memory cache for recommendations (5 minute TTL)
+const recommendationsCache = new Map<string, { data: RecommendationResponse; expiresAt: number }>();
+const RECOMMENDATION_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all servers with optional filtering
@@ -145,6 +150,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid preferences data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to save preferences" });
+    }
+  });
+
+  // Get AI-powered server recommendations
+  app.get("/api/recommendations/:sessionId", async (req, res) => {
+    try {
+      const sessionId = req.params.sessionId;
+      const maxRecommendations = parseInt(req.query.limit as string) || 5;
+
+      // Check cache first
+      const cached = recommendationsCache.get(sessionId);
+      if (cached && cached.expiresAt > Date.now()) {
+        return res.json({ ...cached.data, fromCache: true });
+      }
+
+      // Get user preferences
+      const preferences = await storage.getUserPreferences(sessionId);
+      if (!preferences) {
+        return res.status(404).json({ error: "User preferences not found" });
+      }
+
+      // Get favorite and recent servers with full details
+      const favoriteAddresses = preferences.favoriteServers || [];
+      const recentAddresses = preferences.recentServers || [];
+      
+      const [favoriteServers, recentServers] = await Promise.all([
+        Promise.all(favoriteAddresses.map(addr => storage.getServer(addr))),
+        Promise.all(recentAddresses.map(addr => storage.getServer(addr))),
+      ]);
+
+      // Filter out nulls and undefined
+      const validFavorites = favoriteServers.filter((s): s is NonNullable<typeof s> => s !== null && s !== undefined);
+      const validRecents = recentServers.filter((s): s is NonNullable<typeof s> => s !== null && s !== undefined);
+
+      // Analyze user profile
+      const profile = OpenAIService.analyzeUserProfile(validFavorites, validRecents);
+
+      // Get available servers (top 100 by player count)
+      const allServers = await storage.getServers();
+      const availableServers = allServers
+        .filter(s => s.playerCount && s.playerCount > 0) // Only populated servers
+        .sort((a, b) => (b.playerCount || 0) - (a.playerCount || 0))
+        .slice(0, 100);
+
+      if (availableServers.length === 0) {
+        return res.json({
+          recommendations: [],
+          generatedAt: new Date().toISOString(),
+          message: "No servers available for recommendations",
+        });
+      }
+
+      // Generate recommendations using OpenAI
+      const recommendations = await OpenAIService.generateRecommendations({
+        userProfile: {
+          ...profile,
+          favoriteServers: validFavorites,
+          recentServers: validRecents,
+        },
+        availableServers,
+        maxRecommendations,
+      });
+
+      // Cache the results
+      recommendationsCache.set(sessionId, {
+        data: recommendations,
+        expiresAt: Date.now() + RECOMMENDATION_CACHE_TTL,
+      });
+
+      res.json({ ...recommendations, fromCache: false });
+    } catch (error) {
+      console.error("Recommendations error:", error);
+      res.status(500).json({ 
+        error: "Failed to generate recommendations",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
