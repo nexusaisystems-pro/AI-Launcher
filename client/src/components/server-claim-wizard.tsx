@@ -310,9 +310,9 @@ export function ServerClaimWizard({ server, isOpen, onClose }: ServerClaimWizard
                 </p>
               </div>
               <Button
-                onClick={handleClose}
+                onClick={() => window.location.href = "/dashboard"}
                 className="w-full bg-green-500 hover:bg-green-600"
-                data-testid="button-close-success"
+                data-testid="button-view-dashboard"
               >
                 View Dashboard
               </Button>

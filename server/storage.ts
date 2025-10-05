@@ -32,6 +32,7 @@ export interface IStorage {
   
   // Server ownership
   getServerOwner(serverAddress: string): Promise<ServerOwner | undefined>;
+  getOwnedServers(sessionId: string): Promise<any[]>;
   createServerOwner(owner: InsertServerOwner): Promise<ServerOwner>;
   updateServerOwner(serverAddress: string, updates: Partial<InsertServerOwner>): Promise<ServerOwner | undefined>;
   
@@ -272,6 +273,29 @@ export class DatabaseStorage implements IStorage {
       .from(serverOwners)
       .where(eq(serverOwners.serverAddress, serverAddress));
     return owner || undefined;
+  }
+
+  async getOwnedServers(sessionId: string): Promise<any[]> {
+    const ownedServerAddresses = await db
+      .select()
+      .from(serverOwners)
+      .where(eq(serverOwners.ownerSessionId, sessionId));
+
+    if (ownedServerAddresses.length === 0) {
+      return [];
+    }
+
+    const serverData = await Promise.all(
+      ownedServerAddresses.map(async (ownership) => {
+        const server = await this.getServer(ownership.serverAddress);
+        return {
+          ...server,
+          ownership,
+        };
+      })
+    );
+
+    return serverData.filter(s => s.id);
   }
 
   async createServerOwner(owner: InsertServerOwner): Promise<ServerOwner> {

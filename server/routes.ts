@@ -285,6 +285,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all servers owned by session
+  app.get("/api/servers/owned", async (req, res) => {
+    try {
+      const sessionId = req.query.sessionId as string;
+      if (!sessionId) {
+        return res.status(400).json({ error: "Session ID required" });
+      }
+
+      const ownedServers = await storage.getOwnedServers(sessionId);
+      res.json(ownedServers);
+    } catch (error) {
+      console.error('Get owned servers error:', error);
+      res.status(500).json({ error: "Failed to fetch owned servers" });
+    }
+  });
+
   // Get server statistics
   app.get("/api/stats", async (req, res) => {
     try {
