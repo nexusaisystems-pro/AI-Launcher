@@ -9,6 +9,7 @@ import { steamWorkshopService } from "./steam-workshop-service";
 import { battleMetricsService } from "./battlemetrics-service";
 import { serverIntelligence } from "./server-intelligence";
 import { OpenAIService, type RecommendationResponse } from "./openai-service";
+import { nanoid } from "nanoid";
 
 const serverFiltersSchema = z.object({
   map: z.string().optional(),
@@ -112,6 +113,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(server);
     } catch (error) {
       res.status(500).json({ error: "Failed to update server" });
+    }
+  });
+
+  // Claim server ownership
+  app.post("/api/servers/:address/claim", async (req, res) => {
+    try {
+      const address = decodeURIComponent(req.params.address);
+      const claimSchema = z.object({
+        ownerEmail: z.string().email(),
+        sessionId: z.string(),
+        method: z.enum(["server_name"]),
+      });
+
+      const { ownerEmail, sessionId, method } = claimSchema.parse(req.body);
+
+      // Check if server exists
+      const server = await storage.getServer(address);
+      if (!server) {
+        return res.status(404).json({ error: "Server not found" });
+      }
+
+      // Check if already claimed
+      const existingOwner = await storage.getServerOwner(address);
+      if (existingOwner) {
+        return res.status(400).json({ error: "Server already claimed" });
+      }
+
+      // Generate verification token (6-character alphanumeric)
+      const token = nanoid(6).toUpperCase();
+      
+      // Create verification token (expires in 24 hours)
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      await storage.createVerificationToken({
+        serverAddress: address,
+        token,
+        sessionId,
+        method,
+        expiresAt,
+        verified: false,
+      });
+
+      res.json({
+        success: true,
+        token,
+        method,
+        expiresAt: expiresAt.toISOString(),
+        instructions: {
+          server_name: `Add the verification code [${token}] to your server name. For example: "YourServer [${token}]". We'll check within 5 minutes.`
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid claim data", details: error.errors });
+      }
+      console.error('Server claim error:', error);
+      res.status(500).json({ error: "Failed to initiate server claim" });
+    }
+  });
+
+  // Verify server ownership
+  app.post("/api/servers/:address/verify", async (req, res) => {
+    try {
+      const address = decodeURIComponent(req.params.address);
+      const verifySchema = z.object({
+        token: z.string(),
+        sessionId: z.string(),
+      });
+
+      const { token, sessionId } = verifySchema.parse(req.body);
+
+      // Get verification token
+      const verificationToken = await storage.getVerificationToken(address, token);
+      if (!verificationToken) {
+        return res.status(404).json({ error: "Verification token not found" });
+      }
+
+      // Check if token expired
+      if (new Date() > new Date(verificationToken.expiresAt)) {
+        return res.status(400).json({ error: "Verification token expired" });
+      }
+
+      // Check if session matches
+      if (verificationToken.sessionId !== sessionId) {
+        return res.status(403).json({ error: "Session mismatch" });
+      }
+
+      // Query server to verify token in name
+      const server = await a2sService.queryServer(address);
+      if (!server) {
+        return res.status(400).json({ 
+          error: "Could not query server", 
+          verified: false 
+        });
+      }
+
+      // Check if server name contains the token
+      const serverNameUpper = server.name.toUpperCase();
+      const tokenFound = serverNameUpper.includes(`[${token}]`) || 
+                        serverNameUpper.includes(token);
+
+      if (!tokenFound) {
+        return res.status(400).json({ 
+          error: `Verification code not found in server name. Current name: "${server.name}"`,
+          verified: false,
+          currentServerName: server.name,
+          expectedToken: token
+        });
+      }
+
+      // Mark token as verified
+      await storage.verifyToken(verificationToken.id);
+
+      // Create server owner record with 7-day trial
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+
+      const serverOwner = await storage.createServerOwner({
+        serverAddress: address,
+        ownerEmail: verificationToken.sessionId.includes('@') 
+          ? verificationToken.sessionId 
+          : `${verificationToken.sessionId}@anonymous.local`, // Fallback for sessionId
+        ownerSessionId: sessionId,
+        verificationMethod: verificationToken.method,
+        subscriptionTier: "free",
+        subscriptionStatus: "trial",
+        trialEndsAt,
+      });
+
+      res.json({
+        success: true,
+        verified: true,
+        serverOwner,
+        message: "Server successfully claimed! You now have 7-day free trial of AI Insights."
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid verification data", details: error.errors });
+      }
+      console.error('Server verification error:', error);
+      res.status(500).json({ error: "Failed to verify server ownership" });
+    }
+  });
+
+  // Get server owner info
+  app.get("/api/servers/:address/owner", async (req, res) => {
+    try {
+      const address = decodeURIComponent(req.params.address);
+      const sessionId = req.query.sessionId as string;
+
+      const owner = await storage.getServerOwner(address);
+      if (!owner) {
+        return res.status(404).json({ error: "Server not claimed" });
+      }
+
+      // Only return owner data if session matches
+      if (owner.ownerSessionId !== sessionId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      res.json(owner);
+    } catch (error) {
+      console.error('Get server owner error:', error);
+      res.status(500).json({ error: "Failed to fetch server owner" });
     }
   });
 

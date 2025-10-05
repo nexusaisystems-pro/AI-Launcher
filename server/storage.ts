@@ -1,4 +1,4 @@
-import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type WorkshopMod, type InsertWorkshopMod, type BattleMetricsCache, type InsertBattleMetricsCache, type ServerStats, type ServerFilters, servers, serverAnalytics, userPreferences, workshopMods, battlemetricsCache } from "@shared/schema";
+import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type WorkshopMod, type InsertWorkshopMod, type BattleMetricsCache, type InsertBattleMetricsCache, type ServerStats, type ServerFilters, type ServerOwner, type InsertServerOwner, type VerificationToken, type InsertVerificationToken, servers, serverAnalytics, userPreferences, workshopMods, battlemetricsCache, serverOwners, verificationTokens } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
 
@@ -29,6 +29,16 @@ export interface IStorage {
   getBattleMetricsCacheByAddress(serverAddress: string): Promise<BattleMetricsCache | undefined>;
   cacheBattleMetrics(data: InsertBattleMetricsCache): Promise<BattleMetricsCache>;
   cacheBattleMetricsBatch(data: InsertBattleMetricsCache[]): Promise<BattleMetricsCache[]>;
+  
+  // Server ownership
+  getServerOwner(serverAddress: string): Promise<ServerOwner | undefined>;
+  createServerOwner(owner: InsertServerOwner): Promise<ServerOwner>;
+  updateServerOwner(serverAddress: string, updates: Partial<InsertServerOwner>): Promise<ServerOwner | undefined>;
+  
+  // Verification tokens
+  getVerificationToken(serverAddress: string, token: string): Promise<VerificationToken | undefined>;
+  createVerificationToken(tokenData: InsertVerificationToken): Promise<VerificationToken>;
+  verifyToken(tokenId: string): Promise<VerificationToken | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -254,6 +264,64 @@ export class DatabaseStorage implements IStorage {
       data.map(item => this.cacheBattleMetrics(item))
     );
     return results;
+  }
+
+  async getServerOwner(serverAddress: string): Promise<ServerOwner | undefined> {
+    const [owner] = await db
+      .select()
+      .from(serverOwners)
+      .where(eq(serverOwners.serverAddress, serverAddress));
+    return owner || undefined;
+  }
+
+  async createServerOwner(owner: InsertServerOwner): Promise<ServerOwner> {
+    const [created] = await db
+      .insert(serverOwners)
+      .values({
+        ...owner,
+        verifiedAt: new Date(),
+      })
+      .returning();
+    return created;
+  }
+
+  async updateServerOwner(serverAddress: string, updates: Partial<InsertServerOwner>): Promise<ServerOwner | undefined> {
+    const [updated] = await db
+      .update(serverOwners)
+      .set(updates)
+      .where(eq(serverOwners.serverAddress, serverAddress))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getVerificationToken(serverAddress: string, token: string): Promise<VerificationToken | undefined> {
+    const [verificationToken] = await db
+      .select()
+      .from(verificationTokens)
+      .where(
+        and(
+          eq(verificationTokens.serverAddress, serverAddress),
+          eq(verificationTokens.token, token)
+        )
+      );
+    return verificationToken || undefined;
+  }
+
+  async createVerificationToken(tokenData: InsertVerificationToken): Promise<VerificationToken> {
+    const [created] = await db
+      .insert(verificationTokens)
+      .values(tokenData)
+      .returning();
+    return created;
+  }
+
+  async verifyToken(tokenId: string): Promise<VerificationToken | undefined> {
+    const [updated] = await db
+      .update(verificationTokens)
+      .set({ verified: true })
+      .where(eq(verificationTokens.id, tokenId))
+      .returning();
+    return updated || undefined;
   }
 }
 

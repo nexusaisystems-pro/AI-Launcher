@@ -30,8 +30,35 @@ export const serverAnalytics = pgTable("server_analytics", {
   serverAddress: varchar("server_address", { length: 50 }).notNull(),
   timestamp: timestamp("timestamp").default(sql`CURRENT_TIMESTAMP`),
   playerCount: integer("player_count"),
+  queue: integer("queue"),
+  ping: integer("ping"),
+  uptime: integer("uptime"),
   responseTime: integer("response_time_ms"),
   isOnline: boolean("is_online").default(true),
+});
+
+export const serverOwners = pgTable("server_owners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serverAddress: varchar("server_address", { length: 50 }).notNull().unique(),
+  ownerEmail: varchar("owner_email", { length: 255 }).notNull(),
+  ownerSessionId: varchar("owner_session_id", { length: 100 }).notNull(),
+  verificationMethod: varchar("verification_method", { length: 50 }).notNull(), // "server_name", "dns", "steam_admin"
+  subscriptionTier: varchar("subscription_tier", { length: 50 }).default("free"), // "free", "insights_pro", "premium"
+  subscriptionStatus: varchar("subscription_status", { length: 50 }).default("active"), // "active", "canceled", "trial"
+  trialEndsAt: timestamp("trial_ends_at"),
+  claimedAt: timestamp("claimed_at").default(sql`CURRENT_TIMESTAMP`),
+  verifiedAt: timestamp("verified_at"),
+});
+
+export const verificationTokens = pgTable("verification_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serverAddress: varchar("server_address", { length: 50 }).notNull(),
+  token: varchar("token", { length: 20 }).notNull().unique(),
+  sessionId: varchar("session_id", { length: 100 }).notNull(),
+  method: varchar("method", { length: 50 }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  verified: boolean("verified").default(false),
 });
 
 export const userPreferences = pgTable("user_preferences", {
@@ -155,6 +182,17 @@ export const insertBattleMetricsCacheSchema = createInsertSchema(battlemetricsCa
   cachedAt: true,
 });
 
+export const insertServerOwnerSchema = createInsertSchema(serverOwners).omit({
+  id: true,
+  claimedAt: true,
+  verifiedAt: true,
+});
+
+export const insertVerificationTokenSchema = createInsertSchema(verificationTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertServer = z.infer<typeof insertServerSchema>;
 export type Server = typeof servers.$inferSelect;
@@ -166,3 +204,7 @@ export type InsertWorkshopMod = z.infer<typeof insertWorkshopModSchema>;
 export type WorkshopMod = typeof workshopMods.$inferSelect;
 export type InsertBattleMetricsCache = z.infer<typeof insertBattleMetricsCacheSchema>;
 export type BattleMetricsCache = typeof battlemetricsCache.$inferSelect;
+export type InsertServerOwner = z.infer<typeof insertServerOwnerSchema>;
+export type ServerOwner = typeof serverOwners.$inferSelect;
+export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSchema>;
+export type VerificationToken = typeof verificationTokens.$inferSelect;
