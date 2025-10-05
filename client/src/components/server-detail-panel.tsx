@@ -1,13 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Play, Heart, Copy, Zap, Users, Globe, ExternalLink, Download, Shield, AlertTriangle, Award, TrendingUp, TrendingDown, Minus, Bookmark } from "lucide-react";
+import { X, Play, Heart, Copy, Zap, Users, Globe, ExternalLink, Download, Shield, AlertTriangle, Award, TrendingUp, TrendingDown, Minus, Bookmark, Crown } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkshopMods } from "@/hooks/use-workshop-mods";
 import type { Server } from "@shared/schema";
 import type { ServerWithIntelligence } from "@/hooks/use-servers";
+import { useState } from "react";
+import { ServerClaimWizard } from "./server-claim-wizard";
 
 interface ServerDetailPanelProps {
   server: ServerWithIntelligence;
@@ -18,6 +20,7 @@ interface ServerDetailPanelProps {
 export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanelProps) {
   const { isFavorite, addFavorite, removeFavorite, isWatchlisted, addToWatchlist, removeFromWatchlist } = useFavorites();
   const { toast } = useToast();
+  const [isClaimWizardOpen, setIsClaimWizardOpen] = useState(false);
   
   const workshopIds = (server.mods ?? [])
     .map(mod => mod.workshopId)
@@ -614,6 +617,33 @@ export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanel
           </div>
         </div>
 
+        {/* Server Ownership Claim */}
+        <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500/20 to-yellow-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Crown className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-1">Own this server?</h4>
+                <p className="text-xs text-muted-foreground">
+                  Claim ownership to access analytics, AI insights, and promote your server to more players.
+                </p>
+              </div>
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => setIsClaimWizardOpen(true)}
+                className="border-amber-500/50 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                data-testid="button-claim-server"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Claim This Server
+              </Button>
+            </div>
+          </div>
+        </div>
+
         {/* Server Owner Info */}
         <div className="bg-secondary rounded-lg p-4 space-y-2">
           <div className="flex items-center gap-2 mb-2">
@@ -635,6 +665,12 @@ export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanel
           </div>
         </div>
       </div>
+
+      <ServerClaimWizard 
+        server={server}
+        isOpen={isClaimWizardOpen}
+        onClose={() => setIsClaimWizardOpen(false)}
+      />
     </aside>
   );
 }
