@@ -13,6 +13,8 @@ export function useFavorites() {
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId] = useState(() => getSessionId());
 
+  const dedupe = (arr: string[]) => Array.from(new Set(arr));
+
   useEffect(() => {
     const loadFromBackend = async () => {
       try {
@@ -21,25 +23,22 @@ export function useFavorites() {
         if (response.ok) {
           const preferences = await response.json();
           setData({
-            favorites: preferences.favoriteServers || [],
-            recent: preferences.recentServers || [],
-            watchlist: preferences.watchlistServers || [],
+            favorites: dedupe(preferences.favoriteServers || []),
+            recent: dedupe(preferences.recentServers || []),
+            watchlist: dedupe(preferences.watchlistServers || []),
           });
         } else if (response.status === 404) {
           const stored = localStorage.getItem("dayz-launcher-favorites");
           if (stored) {
             try {
               const parsed = JSON.parse(stored);
-              setData({
-                favorites: parsed.favorites || [],
-                recent: parsed.recent || [],
-                watchlist: parsed.watchlist || [],
-              });
-              await saveToBackend({
-                favorites: parsed.favorites || [],
-                recent: parsed.recent || [],
-                watchlist: parsed.watchlist || [],
-              });
+              const deduped = {
+                favorites: dedupe(parsed.favorites || []),
+                recent: dedupe(parsed.recent || []),
+                watchlist: dedupe(parsed.watchlist || []),
+              };
+              setData(deduped);
+              await saveToBackend(deduped);
             } catch (error) {
               console.error("Failed to migrate from localStorage:", error);
             }
@@ -52,9 +51,9 @@ export function useFavorites() {
           try {
             const parsed = JSON.parse(stored);
             setData({
-              favorites: parsed.favorites || [],
-              recent: parsed.recent || [],
-              watchlist: parsed.watchlist || [],
+              favorites: dedupe(parsed.favorites || []),
+              recent: dedupe(parsed.recent || []),
+              watchlist: dedupe(parsed.watchlist || []),
             });
           } catch (error) {
             console.error("Failed to parse favorites from localStorage:", error);
@@ -97,14 +96,14 @@ export function useFavorites() {
   const addFavorite = (serverAddress: string) => {
     setData(prev => ({
       ...prev,
-      favorites: [...prev.favorites.filter(addr => addr !== serverAddress), serverAddress]
+      favorites: dedupe([...prev.favorites.filter(addr => addr !== serverAddress), serverAddress])
     }));
   };
 
   const removeFavorite = (serverAddress: string) => {
     setData(prev => ({
       ...prev,
-      favorites: prev.favorites.filter(addr => addr !== serverAddress)
+      favorites: dedupe(prev.favorites.filter(addr => addr !== serverAddress))
     }));
   };
 
@@ -115,7 +114,7 @@ export function useFavorites() {
   const addRecent = (serverAddress: string) => {
     setData(prev => ({
       ...prev,
-      recent: [serverAddress, ...prev.recent.filter(addr => addr !== serverAddress)].slice(0, 10)
+      recent: dedupe([serverAddress, ...prev.recent.filter(addr => addr !== serverAddress)].slice(0, 10))
     }));
   };
 
@@ -129,14 +128,14 @@ export function useFavorites() {
   const addToWatchlist = (serverAddress: string) => {
     setData(prev => ({
       ...prev,
-      watchlist: [...prev.watchlist.filter(addr => addr !== serverAddress), serverAddress]
+      watchlist: dedupe([...prev.watchlist.filter(addr => addr !== serverAddress), serverAddress])
     }));
   };
 
   const removeFromWatchlist = (serverAddress: string) => {
     setData(prev => ({
       ...prev,
-      watchlist: prev.watchlist.filter(addr => addr !== serverAddress)
+      watchlist: dedupe(prev.watchlist.filter(addr => addr !== serverAddress))
     }));
   };
 

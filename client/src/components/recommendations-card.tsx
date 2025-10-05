@@ -6,7 +6,7 @@ import { useServers } from "@/hooks/use-servers";
 import { Sparkles, TrendingUp, Eye, Gem, RefreshCw, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import useEmblaCarousel from "embla-carousel-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 
 interface RecommendationsCardProps {
   onSelectServer?: (address: string) => void;
@@ -107,6 +107,16 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
     );
   }
 
+  const uniqueRecommendations = useMemo(() => {
+    if (!recommendations?.recommendations) return [];
+    return recommendations.recommendations.reduce((acc, rec) => {
+      if (!acc.find(r => r.serverAddress === rec.serverAddress)) {
+        acc.push(rec);
+      }
+      return acc;
+    }, [] as typeof recommendations.recommendations);
+  }, [recommendations]);
+
   if (!recommendations || recommendations.recommendations.length === 0) {
     return (
       <Card className="bg-black/40 border-cyan-500/30 backdrop-blur-md" data-testid="card-recommendations-empty">
@@ -152,7 +162,7 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
       <CardContent className="relative group">
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex gap-4">
-            {recommendations.recommendations.map((rec, index) => {
+            {uniqueRecommendations.map((rec, index) => {
               const server = servers.find((s: any) => s.address === rec.serverAddress);
               if (!server) return null;
 

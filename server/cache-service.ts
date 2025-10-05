@@ -9,7 +9,7 @@ export class CacheService {
   private lastRefreshTime: Date | null = null;
   private refreshInterval: NodeJS.Timeout | null = null;
   private readonly REFRESH_INTERVAL_MS = 60000; // 60 seconds
-  private readonly CONCURRENCY_LIMIT = 10;
+  private readonly CONCURRENCY_LIMIT = 3;
 
   async initialize() {
     console.log('[Cache] Initializing server cache...');

@@ -18,8 +18,8 @@ export interface A2SServerInfo {
 }
 
 const DAYZ_APP_ID = 221100;
-const QUERY_TIMEOUT = 3000;
-const RETRY_ATTEMPTS = 2;
+const QUERY_TIMEOUT = 8000;
+const RETRY_ATTEMPTS = 3;
 
 export class A2SService {
   async queryServer(address: string): Promise<A2SServerInfo | null> {
