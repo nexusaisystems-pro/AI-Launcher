@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, Wifi, Clock, Lock, Shield, AlertTriangle, Award, TrendingUp, TrendingDown, Minus } from "lucide-react";
@@ -12,7 +13,7 @@ interface ServerCardProps {
   onJoin: () => void;
 }
 
-export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardProps) {
+export const ServerCard = memo(function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardProps) {
   const getServerInitials = (name: string) => {
     return name.split(" ").slice(0, 2).map(word => word[0]).join("").toUpperCase();
   };
@@ -315,4 +316,4 @@ export function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardP
       )}
     </div>
   );
-}
+});
