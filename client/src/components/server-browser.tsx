@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { FilterSidebar } from "./filter-sidebar";
 import { ServerCard } from "./server-card";
+import { RecommendationsCard } from "./recommendations-card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Grid, List } from "lucide-react";
@@ -197,7 +198,19 @@ export function ServerBrowser({
         </div>
 
         {/* Server Cards List */}
-        <div ref={parentRef} className="flex-1 overflow-y-auto p-6">
+        <div ref={parentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* AI Recommendations */}
+          <RecommendationsCard
+            onSelectServer={(address) => {
+              const server = servers.find(s => s.address === address);
+              if (server) onServerSelect(server);
+            }}
+            onJoinServer={(address) => {
+              const server = servers.find(s => s.address === address);
+              if (server) onServerJoin(server);
+            }}
+          />
+
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
