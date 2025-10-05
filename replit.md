@@ -31,6 +31,21 @@ Preferred communication style: Simple, everyday language.
 - LocalStorage used as fallback/backup for offline resilience and migration
 - Session ID generated with nanoid and persisted in localStorage
 
+**Performance Optimizations** (October 2025)
+- **Virtualized Scrolling**: List view uses @tanstack/react-virtual for efficient rendering of large server lists
+  - Only visible items (+overscan buffer of 5) are rendered in the DOM
+  - Dynamic height measurement for accurate scrolling
+  - Estimated item size of 200px with automatic adjustment
+- **Memoization Strategy**:
+  - ServerCard component wrapped with React.memo to prevent unnecessary re-renders
+  - Filtering and sorting operations optimized with useMemo hooks
+  - Stable callback references using memoized Map lookups (selectHandlers, joinHandlers)
+  - Handler maps keyed by server.address to maintain referential stability
+- **View Mode Handling**:
+  - List view: Single-column layout with virtualization for hundreds of servers
+  - Grid view: Responsive CSS Grid (1/2/3 columns) without virtualization to maintain grid layout
+- **Rendering Efficiency**: With virtualization, only ~10-20 server cards render at any time regardless of total server count
+
 **Key Features**
 - Server browser with advanced filtering (map, ping, player count, perspective, region, mods)
 - Real-time server status updates
