@@ -20,7 +20,7 @@ export function useRecommendations(limit: number = 5) {
   const sessionId = getSessionId();
 
   return useQuery<RecommendationResponse>({
-    queryKey: ["/api/recommendations", sessionId, limit],
+    queryKey: [`/api/recommendations/${sessionId}?limit=${limit}`],
     enabled: !!sessionId,
     staleTime: 5 * 60 * 1000, // 5 minutes (matches backend cache)
     refetchInterval: false, // Don't auto-refetch to save API costs
