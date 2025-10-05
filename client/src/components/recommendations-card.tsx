@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRecommendations, type ServerRecommendation } from "@/hooks/use-recommendations";
 import { useServers } from "@/hooks/use-servers";
-import { Sparkles, TrendingUp, Eye, Gem, RefreshCw, Loader2 } from "lucide-react";
+import { Sparkles, TrendingUp, Eye, Gem, RefreshCw, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
+import useEmblaCarousel from "embla-carousel-react";
+import { useCallback, useEffect, useState } from "react";
 
 interface RecommendationsCardProps {
   onSelectServer?: (address: string) => void;
@@ -39,6 +41,36 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
   const { data: recommendations, isLoading, error, refetch, isFetching } = useRecommendations(5);
   const { data: serversData } = useServers();
   const servers = Array.isArray(serversData) ? serversData : [];
+  
+  const [emblaRef, emblaApi] = useEmblaCarousel({ 
+    loop: false, 
+    align: "start",
+    slidesToScroll: 1,
+  });
+  
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCanScrollPrev(emblaApi.canScrollPrev());
+    setCanScrollNext(emblaApi.canScrollNext());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on("select", onSelect);
+    emblaApi.on("reInit", onSelect);
+  }, [emblaApi, onSelect]);
 
   if (error) {
     return (
@@ -92,7 +124,7 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
   }
 
   return (
-    <Card className="bg-black/40 border-cyan-500/30 backdrop-blur-md" data-testid="card-recommendations">
+    <Card className="bg-black/40 border-cyan-500/30 backdrop-blur-md overflow-hidden" data-testid="card-recommendations">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -117,76 +149,108 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {recommendations.recommendations.map((rec, index) => {
-            const server = servers.find((s: any) => s.address === rec.serverAddress);
-            if (!server) return null;
+      <CardContent className="relative group">
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className="flex gap-4">
+            {recommendations.recommendations.map((rec, index) => {
+              const server = servers.find((s: any) => s.address === rec.serverAddress);
+              if (!server) return null;
 
-            return (
-              <motion.div
-                key={rec.serverAddress}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="p-4 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer group"
-                onClick={() => onSelectServer?.(rec.serverAddress)}
-                data-testid={`recommendation-${rec.serverAddress}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge
-                        variant="outline"
-                        className={`${categoryColors[rec.category]} flex items-center gap-1 text-xs`}
-                        data-testid={`badge-category-${rec.category}`}
-                      >
-                        {categoryIcons[rec.category]}
-                        {categoryLabels[rec.category]}
-                      </Badge>
-                      <div className="flex items-center gap-1 text-xs text-white/50">
+              return (
+                <motion.div
+                  key={rec.serverAddress}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="flex-[0_0_300px] min-w-0"
+                  data-testid={`recommendation-${rec.serverAddress}`}
+                >
+                  <div 
+                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all cursor-pointer h-full hover:scale-105 hover:shadow-xl hover:shadow-cyan-500/20"
+                    onClick={() => onSelectServer?.(rec.serverAddress)}
+                  >
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge
+                          variant="outline"
+                          className={`${categoryColors[rec.category]} flex items-center gap-1 text-xs`}
+                          data-testid={`badge-category-${rec.category}`}
+                        >
+                          {categoryIcons[rec.category]}
+                          {categoryLabels[rec.category]}
+                        </Badge>
+                      </div>
+
+                      <h4 className="font-medium text-white hover:text-cyan-400 transition-colors mb-2 line-clamp-1" data-testid={`text-server-name-${rec.serverAddress}`}>
+                        {server.name}
+                      </h4>
+                      
+                      <div className="flex items-center gap-1 text-xs text-cyan-400/80 mb-3">
                         <Sparkles className="w-3 h-3" />
                         {Math.round(rec.confidence * 100)}% match
                       </div>
+
+                      <p className="text-sm text-white/70 mb-3 line-clamp-2 flex-1" data-testid={`text-reason-${rec.serverAddress}`}>
+                        {rec.reason}
+                      </p>
+
+                      {rec.highlights && rec.highlights.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {rec.highlights.slice(0, 2).map((highlight, i) => (
+                            <span
+                              key={i}
+                              className="text-xs px-2 py-1 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 line-clamp-1"
+                              data-testid={`highlight-${i}-${rec.serverAddress}`}
+                            >
+                              {highlight}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onJoinServer?.(rec.serverAddress);
+                        }}
+                        className="w-full bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-500/30 text-cyan-400"
+                        data-testid={`button-join-${rec.serverAddress}`}
+                      >
+                        Join Server
+                      </Button>
                     </div>
-
-                    <h4 className="font-medium text-white group-hover:text-cyan-400 transition-colors truncate" data-testid={`text-server-name-${rec.serverAddress}`}>
-                      {server.name}
-                    </h4>
-                    <p className="text-sm text-white/70 mt-1" data-testid={`text-reason-${rec.serverAddress}`}>{rec.reason}</p>
-
-                    {rec.highlights && rec.highlights.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {rec.highlights.map((highlight, i) => (
-                          <span
-                            key={i}
-                            className="text-xs px-2 py-1 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
-                            data-testid={`highlight-${i}-${rec.serverAddress}`}
-                          >
-                            {highlight}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onJoinServer?.(rec.serverAddress);
-                    }}
-                    className="shrink-0 bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-500/30 text-cyan-400"
-                    data-testid={`button-join-${rec.serverAddress}`}
-                  >
-                    Join
-                  </Button>
-                </div>
-              </motion.div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
+
+        {canScrollPrev && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={scrollPrev}
+            className="absolute left-0 top-1/2 -translate-y-1/2 h-full w-12 rounded-none bg-gradient-to-r from-black/80 to-transparent hover:from-black/90 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            data-testid="button-carousel-prev"
+          >
+            <ChevronLeft className="w-8 h-8 text-white" />
+          </Button>
+        )}
+
+        {canScrollNext && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={scrollNext}
+            className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-12 rounded-none bg-gradient-to-l from-black/80 to-transparent hover:from-black/90 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            data-testid="button-carousel-next"
+          >
+            <ChevronRight className="w-8 h-8 text-white" />
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
