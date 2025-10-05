@@ -55,6 +55,7 @@ export const verificationTokens = pgTable("verification_tokens", {
   serverAddress: varchar("server_address", { length: 50 }).notNull(),
   token: varchar("token", { length: 20 }).notNull().unique(),
   sessionId: varchar("session_id", { length: 100 }).notNull(),
+  ownerEmail: varchar("owner_email", { length: 255 }).notNull(),
   method: varchar("method", { length: 50 }).notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),

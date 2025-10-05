@@ -151,6 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         serverAddress: address,
         token,
         sessionId,
+        ownerEmail,
         method,
         expiresAt,
         verified: false,
@@ -189,6 +190,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const verificationToken = await storage.getVerificationToken(address, token);
       if (!verificationToken) {
         return res.status(404).json({ error: "Verification token not found" });
+      }
+
+      // Check if already verified
+      if (verificationToken.verified) {
+        return res.status(400).json({ error: "Verification token already used" });
       }
 
       // Check if token expired
@@ -233,9 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const serverOwner = await storage.createServerOwner({
         serverAddress: address,
-        ownerEmail: verificationToken.sessionId.includes('@') 
-          ? verificationToken.sessionId 
-          : `${verificationToken.sessionId}@anonymous.local`, // Fallback for sessionId
+        ownerEmail: verificationToken.ownerEmail,
         ownerSessionId: sessionId,
         verificationMethod: verificationToken.method,
         subscriptionTier: "free",
