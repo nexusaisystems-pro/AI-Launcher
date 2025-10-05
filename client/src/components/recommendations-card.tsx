@@ -158,12 +158,12 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
 
               return (
                 <motion.div
-                  key={rec.serverAddress}
+                  key={`${rec.serverAddress}-${rec.category}-${index}`}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.05 }}
                   className="flex-[0_0_280px] min-w-0"
-                  data-testid={`recommendation-${rec.serverAddress}`}
+                  data-testid={`recommendation-${rec.serverAddress}-${index}`}
                 >
                   <div 
                     className="p-3 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all cursor-pointer h-full hover:scale-105 hover:shadow-xl hover:shadow-cyan-500/20"
