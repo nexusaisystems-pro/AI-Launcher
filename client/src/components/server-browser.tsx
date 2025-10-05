@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { FilterSidebar } from "./filter-sidebar";
 import { ServerCard } from "./server-card";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,8 @@ export function ServerBrowser({
   const [sortBy, setSortBy] = useState("players");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
-  // Filter and search servers
-  const filteredServers = servers.filter(server => {
+  // Filter and search servers (memoized for performance)
+  const filteredServers = useMemo(() => servers.filter(server => {
     // Favorites filter (if active, show only favorited servers)
     // Note: if favoriteAddresses is defined but empty, we show NO servers (since there are no favorites)
     if (filters.favoriteAddresses !== undefined) {
@@ -88,10 +88,10 @@ export function ServerBrowser({
     }
 
     return true;
-  });
+  }), [servers, searchQuery, filters]);
 
-  // Sort servers
-  const sortedServers = [...filteredServers].sort((a, b) => {
+  // Sort servers (memoized for performance)
+  const sortedServers = useMemo(() => [...filteredServers].sort((a, b) => {
     switch (sortBy) {
       case "players":
         return (b.playerCount ?? 0) - (a.playerCount ?? 0);
@@ -108,7 +108,7 @@ export function ServerBrowser({
       default:
         return 0;
     }
-  });
+  }), [filteredServers, sortBy]);
 
   return (
     <div className="flex flex-1 overflow-hidden">
