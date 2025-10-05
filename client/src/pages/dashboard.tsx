@@ -5,14 +5,17 @@ import { JoinModal } from "@/components/join-modal";
 import { useServers } from "@/hooks/use-servers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCw, Plus, Globe } from "lucide-react";
-import type { Server } from "@shared/schema";
+import { Search, RefreshCw, Plus, Globe, Sparkles } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import type { Server, ServerFilters } from "@shared/schema";
 import type { ServerWithIntelligence } from "@/hooks/use-servers";
 
 export default function Dashboard() {
   const [selectedServer, setSelectedServer] = useState<ServerWithIntelligence | null>(null);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [aiFilters, setAiFilters] = useState<ServerFilters | null>(null);
+  const [isAiSearching, setIsAiSearching] = useState(false);
   
   const { data: servers = [], isLoading, refetch } = useServers("/api/servers", undefined, true);
   const { data: statsData } = useServers("/api/stats");
@@ -29,6 +32,32 @@ export default function Dashboard() {
 
   const handleRefresh = () => {
     refetch();
+  };
+
+  const handleAiSearch = async () => {
+    if (!searchQuery.trim()) {
+      setAiFilters(null);
+      return;
+    }
+
+    setIsAiSearching(true);
+    try {
+      const response = await apiRequest("POST", "/api/search/ai", { query: searchQuery });
+      const data = await response.json();
+      setAiFilters(data.filters);
+    } catch (error) {
+      console.error("AI search failed:", error);
+      setAiFilters(null);
+    } finally {
+      setIsAiSearching(false);
+    }
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (!value.trim()) {
+      setAiFilters(null);
+    }
   };
 
   return (
@@ -50,19 +79,55 @@ export default function Dashboard() {
             </div>
           </div>
           
-          {/* Search Bar */}
+          {/* AI Search Bar */}
           <div className="flex-1 max-w-2xl mx-6">
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary/60 group-focus-within:text-primary transition-colors" />
               <Input 
                 type="text" 
-                placeholder="Search servers by name, IP, or map..." 
+                placeholder="Try: 'vanilla servers with low ping' or 'high pop namalsk servers'" 
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full glass border-primary/30 pl-12 pr-4 py-2 text-foreground placeholder-muted-foreground focus:border-primary focus:neon-glow transition-all"
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAiSearch()}
+                className="w-full glass border-primary/30 pl-12 pr-24 py-2 text-foreground placeholder-muted-foreground focus:border-primary focus:neon-glow transition-all"
                 data-testid="search-input"
               />
+              <Button
+                size="sm"
+                onClick={handleAiSearch}
+                disabled={isAiSearching || !searchQuery.trim()}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white border-0"
+                data-testid="button-ai-search"
+              >
+                {isAiSearching ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-1" />
+                    AI
+                  </>
+                )}
+              </Button>
             </div>
+            {aiFilters && Object.keys(aiFilters).length > 0 && (
+              <div className="mt-2 flex items-center gap-2 text-xs">
+                <Sparkles className="w-3 h-3 text-cyan-400" />
+                <span className="text-cyan-400 font-semibold">AI Search Active:</span>
+                <div className="flex gap-1.5 flex-wrap">
+                  {Object.entries(aiFilters).map(([key, value]) => (
+                    <span key={key} className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      {key}: {String(value)}
+                    </span>
+                  ))}
+                  <button
+                    onClick={() => { setAiFilters(null); setSearchQuery(""); }}
+                    className="px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Quick Actions */}
@@ -133,6 +198,7 @@ export default function Dashboard() {
           selectedServer={selectedServer}
           onServerSelect={handleServerSelect}
           onServerJoin={handleJoinServer}
+          aiFilters={aiFilters}
         />
         
         {selectedServer && (

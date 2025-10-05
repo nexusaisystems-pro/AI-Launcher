@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { Server } from "@shared/schema";
+import type { Server, ServerFilters } from "@shared/schema";
 
 // This is using OpenAI's API with Replit's managed integration
 // The newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
@@ -36,6 +36,56 @@ export interface RecommendationResponse {
 export class OpenAIService {
   private static readonly MODEL = "gpt-3.5-turbo";
   private static readonly MAX_TOKENS = 4096;
+
+  static async parseNaturalLanguageSearch(query: string): Promise<ServerFilters> {
+    const systemPrompt = `You are a DayZ server search assistant. Convert natural language queries into structured filters.
+
+Available filters:
+- map: string (e.g., "Chernarus", "Livonia", "Namalsk")
+- perspective: "1PP" | "3PP" | "1PP/3PP"
+- minPlayers: number
+- maxPlayers: number
+- maxPing: number (e.g., 50, 100, 150)
+- modCount: "vanilla" | "light" | "medium" | "heavy"
+- verifiedOnly: boolean
+- hideFraud: boolean
+- minQualityScore: number (0-100, typically 75 for "high quality")
+- region: string (e.g., "EU", "NA", "AS")
+
+Return JSON with ONLY the applicable filters. Use null for unused filters.
+
+Examples:
+"show me vanilla servers" → {"modCount": "vanilla"}
+"high population servers with low ping" → {"minPlayers": 50, "maxPing": 50}
+"1pp servers in europe" → {"perspective": "1PP", "region": "EU"}
+"find me namalsk servers" → {"map": "Namalsk"}
+"verified high quality servers" → {"verifiedOnly": true, "minQualityScore": 75}`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: this.MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Convert this query to filters: "${query}"` },
+        ],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 500,
+      });
+
+      const content = response.choices[0].message.content;
+      if (!content) {
+        return {};
+      }
+
+      const filters = JSON.parse(content) as ServerFilters;
+      return Object.fromEntries(
+        Object.entries(filters).filter(([_, value]) => value !== null && value !== undefined)
+      ) as ServerFilters;
+    } catch (error) {
+      console.error("Natural language search error:", error);
+      return {};
+    }
+  }
 
   static async generateRecommendations(
     request: RecommendationRequest

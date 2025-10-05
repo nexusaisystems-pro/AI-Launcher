@@ -16,6 +16,7 @@ interface ServerBrowserProps {
   selectedServer: ServerWithIntelligence | null;
   onServerSelect: (server: ServerWithIntelligence) => void;
   onServerJoin: (server: ServerWithIntelligence) => void;
+  aiFilters?: ServerFilters | null;
 }
 
 export function ServerBrowser({ 
@@ -24,7 +25,8 @@ export function ServerBrowser({
   searchQuery, 
   selectedServer, 
   onServerSelect, 
-  onServerJoin 
+  onServerJoin,
+  aiFilters 
 }: ServerBrowserProps) {
   const [filters, setFilters] = useState<ServerFilters>({});
   const [sortBy, setSortBy] = useState("players");
@@ -32,66 +34,71 @@ export function ServerBrowser({
   const parentRef = useRef<HTMLDivElement>(null);
 
   // Filter and search servers (memoized for performance)
-  const filteredServers = useMemo(() => servers.filter(server => {
-    // Favorites filter (if active, show only favorited servers)
-    // Note: if favoriteAddresses is defined but empty, we show NO servers (since there are no favorites)
-    if (filters.favoriteAddresses !== undefined) {
-      if (!filters.favoriteAddresses.includes(server.address)) {
+  const filteredServers = useMemo(() => {
+    // Merge AI filters with manual filters (AI filters take precedence)
+    const combinedFilters = { ...filters, ...(aiFilters || {}) };
+    
+    return servers.filter(server => {
+      // Favorites filter (if active, show only favorited servers)
+      // Note: if favoriteAddresses is defined but empty, we show NO servers (since there are no favorites)
+      if (combinedFilters.favoriteAddresses !== undefined) {
+        if (!combinedFilters.favoriteAddresses.includes(server.address)) {
+          return false;
+        }
+      }
+
+      // Recent filter (if active, show only recent servers)  
+      // Note: if recentAddresses is defined but empty, we show NO servers (since there are no recents)
+      if (combinedFilters.recentAddresses !== undefined) {
+        if (!combinedFilters.recentAddresses.includes(server.address)) {
+          return false;
+        }
+      }
+
+      // Search filter (only apply if no AI filters)
+      if (searchQuery && !aiFilters) {
+        const query = searchQuery.toLowerCase();
+        if (!server.name.toLowerCase().includes(query) &&
+            !server.address.toLowerCase().includes(query) &&
+            !server.map?.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+
+      // Apply other filters
+      if (combinedFilters.map && combinedFilters.map !== "All Maps" && server.map !== combinedFilters.map) {
         return false;
       }
-    }
-
-    // Recent filter (if active, show only recent servers)  
-    // Note: if recentAddresses is defined but empty, we show NO servers (since there are no recents)
-    if (filters.recentAddresses !== undefined) {
-      if (!filters.recentAddresses.includes(server.address)) {
+      if (combinedFilters.minPlayers && (server.playerCount ?? 0) < combinedFilters.minPlayers) {
         return false;
       }
-    }
-
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (!server.name.toLowerCase().includes(query) &&
-          !server.address.toLowerCase().includes(query) &&
-          !server.map?.toLowerCase().includes(query)) {
+      if (combinedFilters.maxPing && (server.ping ?? 0) > combinedFilters.maxPing) {
         return false;
       }
-    }
+      if (combinedFilters.perspective && combinedFilters.perspective !== "Both" && server.perspective !== combinedFilters.perspective) {
+        return false;
+      }
+      if (!combinedFilters.showFull && (server.playerCount ?? 0) >= (server.maxPlayers ?? 0)) {
+        return false;
+      }
+      if (!combinedFilters.showPasswordProtected && server.passwordProtected) {
+        return false;
+      }
 
-    // Apply other filters
-    if (filters.map && filters.map !== "All Maps" && server.map !== filters.map) {
-      return false;
-    }
-    if (filters.minPlayers && (server.playerCount ?? 0) < filters.minPlayers) {
-      return false;
-    }
-    if (filters.maxPing && (server.ping ?? 0) > filters.maxPing) {
-      return false;
-    }
-    if (filters.perspective && filters.perspective !== "Both" && server.perspective !== filters.perspective) {
-      return false;
-    }
-    if (!filters.showFull && (server.playerCount ?? 0) >= (server.maxPlayers ?? 0)) {
-      return false;
-    }
-    if (!filters.showPasswordProtected && server.passwordProtected) {
-      return false;
-    }
+      // Quality filters
+      if (combinedFilters.minQualityScore && (!server.intelligence || server.intelligence.qualityScore < combinedFilters.minQualityScore)) {
+        return false;
+      }
+      if (combinedFilters.hideFraud && server.intelligence && server.intelligence.fraudFlags.length > 0) {
+        return false;
+      }
+      if (combinedFilters.verifiedOnly && (!server.intelligence || !server.intelligence.verified)) {
+        return false;
+      }
 
-    // Quality filters
-    if (filters.minQualityScore && (!server.intelligence || server.intelligence.qualityScore < filters.minQualityScore)) {
-      return false;
-    }
-    if (filters.hideFraud && server.intelligence && server.intelligence.fraudFlags.length > 0) {
-      return false;
-    }
-    if (filters.verifiedOnly && (!server.intelligence || !server.intelligence.verified)) {
-      return false;
-    }
-
-    return true;
-  }), [servers, searchQuery, filters]);
+      return true;
+    });
+  }, [servers, searchQuery, filters, aiFilters]);
 
   // Sort servers (memoized for performance)
   const sortedServers = useMemo(() => [...filteredServers].sort((a, b) => {

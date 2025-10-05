@@ -153,6 +153,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Parse natural language search query into filters
+  app.post("/api/search/ai", async (req, res) => {
+    try {
+      const { query } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: "Query string required" });
+      }
+
+      const filters = await OpenAIService.parseNaturalLanguageSearch(query);
+      res.json({ filters, query });
+    } catch (error) {
+      console.error("AI search error:", error);
+      res.status(500).json({ 
+        error: "Failed to parse search query",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Get AI-powered server recommendations
   app.get("/api/recommendations/:sessionId", async (req, res) => {
     try {
