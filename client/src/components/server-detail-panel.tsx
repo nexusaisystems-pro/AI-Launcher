@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Play, Heart, Copy, Zap, Users, Globe, ExternalLink, Download, Shield, AlertTriangle, Award, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { X, Play, Heart, Copy, Zap, Users, Globe, ExternalLink, Download, Shield, AlertTriangle, Award, TrendingUp, TrendingDown, Minus, Bookmark } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +16,7 @@ interface ServerDetailPanelProps {
 }
 
 export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanelProps) {
-  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const { isFavorite, addFavorite, removeFavorite, isWatchlisted, addToWatchlist, removeFromWatchlist } = useFavorites();
   const { toast } = useToast();
   
   const workshopIds = (server.mods ?? [])
@@ -32,6 +32,16 @@ export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanel
     } else {
       addFavorite(server.address);
       toast({ title: "Added to favorites" });
+    }
+  };
+
+  const handleToggleWatchlist = () => {
+    if (isWatchlisted(server.address)) {
+      removeFromWatchlist(server.address);
+      toast({ title: "Removed from watchlist" });
+    } else {
+      addToWatchlist(server.address);
+      toast({ title: "Added to watchlist" });
     }
   };
 
@@ -540,24 +550,33 @@ export function ServerDetailPanel({ server, onClose, onJoin }: ServerDetailPanel
             Join Server Now
           </Button>
 
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button 
               variant="outline"
               onClick={handleToggleFavorite}
-              className="flex-1"
+              className="w-full"
               data-testid="button-toggle-favorite"
             >
               <Heart className={`w-4 h-4 mr-2 ${isFavorite(server.address) ? 'fill-current text-red-500' : ''}`} />
-              {isFavorite(server.address) ? 'Remove from Favorites' : 'Add to Favorites'}
+              {isFavorite(server.address) ? 'Unfavorite' : 'Favorite'}
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={handleToggleWatchlist}
+              className="w-full"
+              data-testid="button-toggle-watchlist"
+            >
+              <Bookmark className={`w-4 h-4 mr-2 ${isWatchlisted(server.address) ? 'fill-[hsl(25,85%,55%)]' : ''}`} style={{ color: "hsl(25, 85%, 55%)" }} />
+              {isWatchlisted(server.address) ? 'Unwatch' : 'Watchlist'}
             </Button>
             <Button 
               variant="outline"
               onClick={handleCopyIP}
-              className="flex-1"
+              className="col-span-2 w-full"
               data-testid="button-copy-ip"
             >
               <Copy className="w-4 h-4 mr-2" />
-              Copy IP
+              Copy IP Address
             </Button>
           </div>
         </div>
