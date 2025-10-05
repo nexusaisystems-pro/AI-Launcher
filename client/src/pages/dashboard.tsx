@@ -35,23 +35,23 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Header */}
       <header className="glass border-b border-primary/20 sticky top-0 z-50 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-6 py-5">
+        <div className="flex items-center justify-between px-4 py-3">
           {/* Logo and Title */}
-          <div className="flex items-center gap-4">
-            <div className="relative w-12 h-12 holographic rounded-xl flex items-center justify-center neon-border animate-float">
-              <Globe className="w-7 h-7 text-primary-glow" />
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 holographic rounded-xl flex items-center justify-center neon-border animate-float">
+              <Globe className="w-6 h-6 text-primary-glow" />
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 blur-xl -z-10"></div>
             </div>
             <div>
-              <h1 className="text-2xl font-bold font-display text-foreground bg-clip-text text-transparent bg-gradient-to-r from-primary-glow via-secondary-glow to-accent-glow animate-shimmer" style={{backgroundSize: "200% auto"}}>
+              <h1 className="text-xl font-bold font-display text-foreground bg-clip-text text-transparent bg-gradient-to-r from-primary-glow via-secondary-glow to-accent-glow animate-shimmer" style={{backgroundSize: "200% auto"}}>
                 DayZ Server Browser
               </h1>
-              <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Next-Gen Launcher</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Next-Gen Launcher</p>
             </div>
           </div>
           
           {/* Search Bar */}
-          <div className="flex-1 max-w-2xl mx-8">
+          <div className="flex-1 max-w-2xl mx-6">
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary/60 group-focus-within:text-primary transition-colors" />
               <Input 
@@ -59,7 +59,7 @@ export default function Dashboard() {
                 placeholder="Search servers by name, IP, or map..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full glass border-primary/30 pl-12 pr-4 py-3 text-foreground placeholder-muted-foreground focus:border-primary focus:neon-glow transition-all"
+                className="w-full glass border-primary/30 pl-12 pr-4 py-2 text-foreground placeholder-muted-foreground focus:border-primary focus:neon-glow transition-all"
                 data-testid="search-input"
               />
             </div>
@@ -88,27 +88,27 @@ export default function Dashboard() {
         </div>
         
         {/* Quick Stats Bar */}
-        <div className="glass border-t border-primary/20 px-6 py-3">
+        <div className="glass border-t border-primary/20 px-4 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
                 <span className="status-dot status-online"></span>
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Servers:</span>
-                <span className="text-lg font-bold font-display text-primary-glow" data-testid="text-servers-online">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Servers:</span>
+                <span className="text-base font-bold font-display text-primary-glow" data-testid="text-servers-online">
                   {stats?.serversOnline ?? (Array.isArray(servers) ? servers.length : 0)}
                 </span>
               </div>
-              <div className="w-px h-6 bg-primary/20"></div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Players:</span>
-                <span className="text-lg font-bold font-display text-success" data-testid="text-total-players">
+              <div className="w-px h-5 bg-primary/20"></div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Players:</span>
+                <span className="text-base font-bold font-display text-success" data-testid="text-total-players">
                   {stats?.totalPlayers ?? (Array.isArray(servers) ? servers.reduce((sum, s) => sum + (s.playerCount ?? 0), 0) : 0)}
                 </span>
               </div>
-              <div className="w-px h-6 bg-primary/20"></div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Avg Ping:</span>
-                <span className="text-lg font-bold font-display text-foreground" data-testid="text-avg-ping">
+              <div className="w-px h-5 bg-primary/20"></div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Avg Ping:</span>
+                <span className="text-base font-bold font-display text-foreground" data-testid="text-avg-ping">
                   {stats?.avgPing ?? (Array.isArray(servers) && servers.length > 0 ? Math.round(servers.reduce((sum, s) => sum + (s.ping ?? 0), 0) / servers.length) : 0)}<span className="text-sm text-muted-foreground">ms</span>
                 </span>
               </div>

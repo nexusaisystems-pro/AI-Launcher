@@ -162,15 +162,15 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex-[0_0_300px] min-w-0"
+                  className="flex-[0_0_280px] min-w-0"
                   data-testid={`recommendation-${rec.serverAddress}`}
                 >
                   <div 
-                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all cursor-pointer h-full hover:scale-105 hover:shadow-xl hover:shadow-cyan-500/20"
+                    className="p-3 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all cursor-pointer h-full hover:scale-105 hover:shadow-xl hover:shadow-cyan-500/20"
                     onClick={() => onSelectServer?.(rec.serverAddress)}
                   >
                     <div className="flex flex-col h-full">
-                      <div className="flex items-center gap-2 mb-3">
+                      <div className="flex items-center gap-2 mb-2">
                         <Badge
                           variant="outline"
                           className={`${categoryColors[rec.category]} flex items-center gap-1 text-xs`}
@@ -181,21 +181,21 @@ export function RecommendationsCard({ onSelectServer, onJoinServer }: Recommenda
                         </Badge>
                       </div>
 
-                      <h4 className="font-medium text-white hover:text-cyan-400 transition-colors mb-2 line-clamp-1" data-testid={`text-server-name-${rec.serverAddress}`}>
+                      <h4 className="font-medium text-sm text-white hover:text-cyan-400 transition-colors mb-1.5 line-clamp-1" data-testid={`text-server-name-${rec.serverAddress}`}>
                         {server.name}
                       </h4>
                       
-                      <div className="flex items-center gap-1 text-xs text-cyan-400/80 mb-3">
+                      <div className="flex items-center gap-1 text-xs text-cyan-400/80 mb-2">
                         <Sparkles className="w-3 h-3" />
                         {Math.round(rec.confidence * 100)}% match
                       </div>
 
-                      <p className="text-sm text-white/70 mb-3 line-clamp-2 flex-1" data-testid={`text-reason-${rec.serverAddress}`}>
+                      <p className="text-xs text-white/70 mb-2 line-clamp-2 flex-1" data-testid={`text-reason-${rec.serverAddress}`}>
                         {rec.reason}
                       </p>
 
                       {rec.highlights && rec.highlights.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
+                        <div className="flex flex-wrap gap-1.5 mb-2">
                           {rec.highlights.slice(0, 2).map((highlight, i) => (
                             <span
                               key={i}

@@ -53,14 +53,14 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
   };
 
   return (
-    <aside className="w-80 glass border-r border-primary/20 overflow-y-auto flex-shrink-0 backdrop-blur-xl">
-      <div className="p-6 space-y-6">
+    <aside className="w-72 glass border-r border-primary/20 overflow-y-auto flex-shrink-0 backdrop-blur-xl">
+      <div className="p-4 space-y-4">
         {/* Header */}
-        <div className="flex items-center gap-3 pb-4 border-b border-primary/20">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-lg flex items-center justify-center neon-border">
-            <Sliders className="w-5 h-5 text-primary-glow" />
+        <div className="flex items-center gap-2 pb-3 border-b border-primary/20">
+          <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-lg flex items-center justify-center neon-border">
+            <Sliders className="w-4 h-4 text-primary-glow" />
           </div>
-          <h2 className="text-xl font-bold font-display text-foreground">Filters</h2>
+          <h2 className="text-lg font-bold font-display text-foreground">Filters</h2>
         </div>
 
         {/* Tabs */}
@@ -92,10 +92,10 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="filters" className="space-y-6 mt-6">
+          <TabsContent value="filters" className="space-y-4 mt-4">
             {/* Quick Filters */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold font-display uppercase tracking-wider text-primary-glow">Quick Filters</h3>
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold font-display uppercase tracking-wider text-primary-glow">Quick Filters</h3>
               <div className="flex flex-wrap gap-2">
                 <Badge 
                   variant="secondary" 
@@ -157,8 +157,8 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
             </div>
 
             {/* Map Filter */}
-            <div className="space-y-3">
-              <label className="text-sm font-bold font-display uppercase tracking-wider text-foreground">Map</label>
+            <div className="space-y-2">
+              <label className="text-xs font-bold font-display uppercase tracking-wider text-foreground">Map</label>
               <Select value={filters.map || "All Maps"} onValueChange={(value) => handleFilterChange('map', value === "All Maps" ? undefined : value)}>
                 <SelectTrigger className="w-full glass border-primary/30 hover:border-primary/50 transition-colors" data-testid="select-map">
                   <SelectValue />
@@ -176,7 +176,7 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
             </div>
 
             {/* Ping Range */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold font-display uppercase tracking-wider text-foreground">Ping Range</label>
                 <span className="text-sm font-bold font-display text-primary-glow px-3 py-1 rounded-md glass border border-primary/30" data-testid="text-ping-range-filter">
