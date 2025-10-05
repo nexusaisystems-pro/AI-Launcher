@@ -6,7 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFavorites } from "@/hooks/use-favorites";
-import { Sliders, Star, Clock } from "lucide-react";
+import { Sliders, Star, Clock, Bookmark } from "lucide-react";
 import type { ServerFilters } from "@shared/schema";
 
 interface FilterSidebarProps {
@@ -17,15 +17,17 @@ interface FilterSidebarProps {
 export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) {
   const [pingRange, setPingRange] = useState([filters.maxPing || 150]);
   const [activeTab, setActiveTab] = useState("filters");
-  const { favorites, recent } = useFavorites();
+  const { favorites, recent, watchlist } = useFavorites();
 
   useEffect(() => {
     if (activeTab === "favorites") {
-      onFiltersChange(prev => ({ ...prev, favoriteAddresses: favorites, recentAddresses: undefined }));
+      onFiltersChange(prev => ({ ...prev, favoriteAddresses: favorites, recentAddresses: undefined, watchlistAddresses: undefined }));
     } else if (activeTab === "recent") {
-      onFiltersChange(prev => ({ ...prev, recentAddresses: recent, favoriteAddresses: undefined }));
+      onFiltersChange(prev => ({ ...prev, recentAddresses: recent, favoriteAddresses: undefined, watchlistAddresses: undefined }));
+    } else if (activeTab === "watchlist") {
+      onFiltersChange(prev => ({ ...prev, watchlistAddresses: watchlist, favoriteAddresses: undefined, recentAddresses: undefined }));
     }
-  }, [favorites, recent, activeTab, onFiltersChange]);
+  }, [favorites, recent, watchlist, activeTab, onFiltersChange]);
 
   const handleFilterChange = (key: keyof ServerFilters, value: any) => {
     onFiltersChange(prev => ({ ...prev, [key]: value }));
@@ -44,11 +46,13 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
     setActiveTab(tab);
     
     if (tab === "favorites") {
-      onFiltersChange(prev => ({ ...prev, favoriteAddresses: favorites, recentAddresses: undefined }));
+      onFiltersChange(prev => ({ ...prev, favoriteAddresses: favorites, recentAddresses: undefined, watchlistAddresses: undefined }));
     } else if (tab === "recent") {
-      onFiltersChange(prev => ({ ...prev, recentAddresses: recent, favoriteAddresses: undefined }));
+      onFiltersChange(prev => ({ ...prev, recentAddresses: recent, favoriteAddresses: undefined, watchlistAddresses: undefined }));
+    } else if (tab === "watchlist") {
+      onFiltersChange(prev => ({ ...prev, watchlistAddresses: watchlist, favoriteAddresses: undefined, recentAddresses: undefined }));
     } else {
-      onFiltersChange(prev => ({ ...prev, favoriteAddresses: undefined, recentAddresses: undefined }));
+      onFiltersChange(prev => ({ ...prev, favoriteAddresses: undefined, recentAddresses: undefined, watchlistAddresses: undefined }));
     }
   };
 
@@ -65,29 +69,38 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 glass p-1 gap-1 border border-primary/20">
+          <TabsList className="grid w-full grid-cols-4 glass p-1 gap-1 border border-primary/20">
             <TabsTrigger 
               value="filters" 
               data-testid="tab-filters"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:neon-glow font-semibold"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:neon-glow font-semibold text-xs"
             >
-              <Sliders className="w-4 h-4 mr-1.5" />
+              <Sliders className="w-3 h-3 mr-1" />
               Filters
             </TabsTrigger>
             <TabsTrigger 
               value="favorites" 
               data-testid="tab-favorites"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:neon-glow-secondary font-semibold"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=active]:neon-glow-secondary font-semibold text-xs"
             >
-              <Star className="w-4 h-4 mr-1.5" />
-              Favorites
+              <Star className="w-3 h-3 mr-1" />
+              Faves
+            </TabsTrigger>
+            <TabsTrigger 
+              value="watchlist" 
+              data-testid="tab-watchlist"
+              className="data-[state=active]:bg-[hsl(25,85%,55%)] data-[state=active]:text-[#0a0a0a] font-semibold text-xs"
+              style={{ "--glow-color": "hsl(25, 85%, 55%)" } as React.CSSProperties}
+            >
+              <Bookmark className="w-3 h-3 mr-1" />
+              Watch
             </TabsTrigger>
             <TabsTrigger 
               value="recent" 
               data-testid="tab-recent"
-              className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground font-semibold"
+              className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground font-semibold text-xs"
             >
-              <Clock className="w-4 h-4 mr-1.5" />
+              <Clock className="w-3 h-3 mr-1" />
               Recent
             </TabsTrigger>
           </TabsList>
@@ -324,6 +337,28 @@ export function FilterSidebar({ filters, onFiltersChange }: FilterSidebarProps) 
                 favorites.map((address) => (
                   <div key={address} className="glass-card p-3 neon-border">
                     <code className="mono text-sm text-primary-glow">{address}</code>
+                  </div>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="watchlist" className="mt-6">
+            <div className="space-y-3">
+              {watchlist.length === 0 ? (
+                <div className="glass-card p-6 text-center">
+                  <Bookmark className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-sm text-muted-foreground font-medium">
+                    No watchlisted servers
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Flag servers to try later
+                  </p>
+                </div>
+              ) : (
+                watchlist.map((address) => (
+                  <div key={address} className="glass-card p-3 border border-[hsl(25,85%,55%)]/30">
+                    <code className="mono text-sm" style={{ color: "hsl(25, 85%, 55%)" }}>{address}</code>
                   </div>
                 ))
               )}

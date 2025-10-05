@@ -55,6 +55,13 @@ export function ServerBrowser({
         }
       }
 
+      // Watchlist filter (if active, show only watchlisted servers)
+      if (combinedFilters.watchlistAddresses !== undefined) {
+        if (!combinedFilters.watchlistAddresses.includes(server.address)) {
+          return false;
+        }
+      }
+
       // Search filter (only apply if no AI filters)
       if (searchQuery && !aiFilters) {
         const query = searchQuery.toLowerCase();

@@ -5,14 +5,14 @@ import { apiRequest } from "@/lib/queryClient";
 interface FavoritesData {
   favorites: string[];
   recent: string[];
+  watchlist: string[];
 }
 
 export function useFavorites() {
-  const [data, setData] = useState<FavoritesData>({ favorites: [], recent: [] });
+  const [data, setData] = useState<FavoritesData>({ favorites: [], recent: [], watchlist: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId] = useState(() => getSessionId());
 
-  // Load from backend on mount
   useEffect(() => {
     const loadFromBackend = async () => {
       try {
@@ -23,16 +23,23 @@ export function useFavorites() {
           setData({
             favorites: preferences.favoriteServers || [],
             recent: preferences.recentServers || [],
+            watchlist: preferences.watchlistServers || [],
           });
         } else if (response.status === 404) {
-          // No preferences yet, try migrating from localStorage
           const stored = localStorage.getItem("dayz-launcher-favorites");
           if (stored) {
             try {
               const parsed = JSON.parse(stored);
-              setData(parsed);
-              // Save migrated data to backend
-              await saveToBackend(parsed);
+              setData({
+                favorites: parsed.favorites || [],
+                recent: parsed.recent || [],
+                watchlist: parsed.watchlist || [],
+              });
+              await saveToBackend({
+                favorites: parsed.favorites || [],
+                recent: parsed.recent || [],
+                watchlist: parsed.watchlist || [],
+              });
             } catch (error) {
               console.error("Failed to migrate from localStorage:", error);
             }
@@ -40,12 +47,15 @@ export function useFavorites() {
         }
       } catch (error) {
         console.error("Failed to load preferences from backend:", error);
-        // Fallback to localStorage
         const stored = localStorage.getItem("dayz-launcher-favorites");
         if (stored) {
           try {
             const parsed = JSON.parse(stored);
-            setData(parsed);
+            setData({
+              favorites: parsed.favorites || [],
+              recent: parsed.recent || [],
+              watchlist: parsed.watchlist || [],
+            });
           } catch (error) {
             console.error("Failed to parse favorites from localStorage:", error);
           }
@@ -58,33 +68,28 @@ export function useFavorites() {
     loadFromBackend();
   }, [sessionId]);
 
-  // Save to backend
   const saveToBackend = useCallback(async (newData: FavoritesData) => {
     try {
       await apiRequest("POST", "/api/preferences", {
         sessionId,
         favoriteServers: newData.favorites,
         recentServers: newData.recent,
+        watchlistServers: newData.watchlist,
       });
     } catch (error) {
       console.error("Failed to save preferences to backend:", error);
     }
   }, [sessionId]);
 
-  // Save to localStorage and backend whenever data changes
   useEffect(() => {
-    if (isLoading) return; // Don't save during initial load
+    if (isLoading) return;
 
     const current = localStorage.getItem("dayz-launcher-favorites");
     const newValue = JSON.stringify(data);
     
-    // Only update if value actually changed
     if (current !== newValue) {
-      // Save to localStorage as backup
       localStorage.setItem("dayz-launcher-favorites", newValue);
-      // Save to backend
       saveToBackend(data);
-      // Dispatch custom event for same-window updates
       window.dispatchEvent(new Event("favorites-updated"));
     }
   }, [data, isLoading, saveToBackend]);
@@ -110,7 +115,7 @@ export function useFavorites() {
   const addRecent = (serverAddress: string) => {
     setData(prev => ({
       ...prev,
-      recent: [serverAddress, ...prev.recent.filter(addr => addr !== serverAddress)].slice(0, 10) // Keep last 10
+      recent: [serverAddress, ...prev.recent.filter(addr => addr !== serverAddress)].slice(0, 10)
     }));
   };
 
@@ -121,14 +126,36 @@ export function useFavorites() {
     }));
   };
 
+  const addToWatchlist = (serverAddress: string) => {
+    setData(prev => ({
+      ...prev,
+      watchlist: [...prev.watchlist.filter(addr => addr !== serverAddress), serverAddress]
+    }));
+  };
+
+  const removeFromWatchlist = (serverAddress: string) => {
+    setData(prev => ({
+      ...prev,
+      watchlist: prev.watchlist.filter(addr => addr !== serverAddress)
+    }));
+  };
+
+  const isWatchlisted = (serverAddress: string) => {
+    return data.watchlist.includes(serverAddress);
+  };
+
   return {
     favorites: data.favorites,
     recent: data.recent,
+    watchlist: data.watchlist,
     addFavorite,
     removeFavorite,
     isFavorite,
     addRecent,
     clearRecent,
     isLoading,
+    addToWatchlist,
+    removeFromWatchlist,
+    isWatchlisted,
   };
 }

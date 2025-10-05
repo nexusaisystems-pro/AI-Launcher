@@ -1,10 +1,11 @@
 import { memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Wifi, Clock, Lock, Shield, AlertTriangle, Award, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Users, Wifi, Clock, Lock, Shield, AlertTriangle, Award, TrendingUp, TrendingDown, Minus, Bookmark } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Server } from "@shared/schema";
 import type { ServerWithIntelligence } from "@/hooks/use-servers";
+import { useFavorites } from "@/hooks/use-favorites";
 
 interface ServerCardProps {
   server: ServerWithIntelligence;
@@ -14,6 +15,18 @@ interface ServerCardProps {
 }
 
 export const ServerCard = memo(function ServerCard({ server, isSelected, onSelect, onJoin }: ServerCardProps) {
+  const { isWatchlisted, addToWatchlist, removeFromWatchlist } = useFavorites();
+  const watchlisted = isWatchlisted(server.address);
+
+  const handleToggleWatchlist = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (watchlisted) {
+      removeFromWatchlist(server.address);
+    } else {
+      addToWatchlist(server.address);
+    }
+  };
+
   const getServerInitials = (name: string) => {
     return name.split(" ").slice(0, 2).map(word => word[0]).join("").toUpperCase();
   };
@@ -269,6 +282,16 @@ export const ServerCard = memo(function ServerCard({ server, isSelected, onSelec
 
         {/* Actions */}
         <div className="flex gap-2 ml-auto">
+          <Button 
+            onClick={handleToggleWatchlist}
+            variant="outline"
+            size="icon"
+            className={`glass border-[hsl(25,85%,55%)]/30 hover:border-[hsl(25,85%,55%)]/50 transition-all ${watchlisted ? 'bg-[hsl(25,85%,55%)]/20' : ''}`}
+            data-testid={`button-watchlist-${server.address}`}
+            title={watchlisted ? "Remove from watchlist" : "Add to watchlist"}
+          >
+            <Bookmark className={`w-4 h-4 ${watchlisted ? 'fill-[hsl(25,85%,55%)]' : ''}`} style={{ color: "hsl(25, 85%, 55%)" }} />
+          </Button>
           <Button 
             onClick={(e) => {
               e.stopPropagation();

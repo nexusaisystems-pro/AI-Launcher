@@ -39,6 +39,7 @@ export const userPreferences = pgTable("user_preferences", {
   sessionId: varchar("session_id", { length: 100 }).notNull(),
   favoriteServers: jsonb("favorite_servers").$type<string[]>().default([]),
   recentServers: jsonb("recent_servers").$type<string[]>().default([]),
+  watchlistServers: jsonb("watchlist_servers").$type<string[]>().default([]),
   filters: jsonb("filters").$type<ServerFilters>(),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
@@ -116,6 +117,7 @@ export interface ServerFilters {
   tags?: string[];
   favoriteAddresses?: string[];
   recentAddresses?: string[];
+  watchlistAddresses?: string[];
   minQualityScore?: number;
   hideFraud?: boolean;
   verifiedOnly?: boolean;
