@@ -34,7 +34,7 @@ export interface RecommendationResponse {
 }
 
 export class OpenAIService {
-  private static readonly MODEL = "gpt-4o";
+  private static readonly MODEL = "gpt-3.5-turbo";
   private static readonly MAX_TOKENS = 4096;
 
   static async generateRecommendations(
