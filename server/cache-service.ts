@@ -141,6 +141,16 @@ export class CacheService {
 
       await this.loadFromDatabase();
       
+      // Clean up stale "MOVED" servers
+      await this.cleanupStaleServers();
+      
+      // If server count dropped significantly after cleanup, rediscover servers
+      const MIN_SERVERS = 50;
+      if (this.serverCache.length < MIN_SERVERS) {
+        console.log(`[Cache] Server count (${this.serverCache.length}) below minimum (${MIN_SERVERS}), rediscovering...`);
+        await this.discoverAndQueryNewServers(100);
+      }
+      
       // Enrich top servers with BattleMetrics data
       await this.enrichTopServersWithBattleMetrics();
       
@@ -153,6 +163,32 @@ export class CacheService {
       console.error('[Cache] Refresh failed:', error);
     } finally {
       this.isRefreshing = false;
+    }
+  }
+
+  async cleanupStaleServers() {
+    try {
+      const staleKeywords = ['MOVED', 'MIGRATED', 'RELOCATED'];
+      let removedCount = 0;
+
+      for (const server of this.serverCache) {
+        const serverName = server.name?.toUpperCase() || '';
+        
+        // Check if server name contains stale keywords
+        const isStale = staleKeywords.some(keyword => serverName.includes(keyword));
+        
+        if (isStale) {
+          await storage.deleteServer(server.address);
+          removedCount++;
+        }
+      }
+
+      if (removedCount > 0) {
+        console.log(`[Cache] Cleaned up ${removedCount} stale servers`);
+        await this.loadFromDatabase(); // Reload cache after cleanup
+      }
+    } catch (error) {
+      console.error('[Cache] Failed to cleanup stale servers:', error);
     }
   }
 

@@ -170,12 +170,17 @@ export class BattleMetricsService {
   }
 
   async discoverDayZServers(maxServers = 100): Promise<Array<{address: string; name: string; playerCount: number; maxPlayers: number; map?: string}>> {
-    console.log(`[BattleMetrics] Discovering up to ${maxServers} DayZ servers...`);
+    console.log(`[BattleMetrics] Discovering up to ${maxServers} DayZ servers with pagination...`);
     
     const servers: Array<{address: string; name: string; playerCount: number; maxPlayers: number; map?: string}> = [];
-    let pageSize = Math.min(maxServers, 100);
+    const seenAddresses = new Set<string>();
+    let pageSize = Math.min(100, maxServers);
+    let nextUrl: string | undefined = undefined;
+    let pagesProcessed = 0;
+    const maxPages = 5; // Limit to prevent excessive API calls
     
     try {
+      // Initial request - sort by players descending
       const data: BattleMetricsServerListResponse = await this.fetchFromBattleMetrics('/servers', {
         'filter[game]': 'dayz',
         'page[size]': String(pageSize),
@@ -187,36 +192,95 @@ export class BattleMetricsService {
         return servers;
       }
 
-      for (const server of data.data) {
-        const serverName = server.attributes.name || '';
-        
-        // Skip servers that have been moved (stale listings)
-        if (serverName.toUpperCase().includes('MOVED') || 
-            serverName.toUpperCase().includes('MIGRATED') ||
-            serverName.toUpperCase().includes('RELOCATED')) {
-          console.log(`[BattleMetrics] Skipping moved server: ${serverName}`);
-          continue;
-        }
-        
-        const address = server.attributes.address || `${server.attributes.ip}:${server.attributes.port}`;
-        servers.push({
-          address,
-          name: serverName,
-          playerCount: server.attributes.players,
-          maxPlayers: server.attributes.maxPlayers,
-          map: server.attributes.details?.map,
-        });
+      // Process first page
+      this.processServerPage(data.data, servers, seenAddresses, maxServers);
+      nextUrl = data.links?.next;
+      pagesProcessed++;
 
-        if (servers.length >= maxServers) {
+      // Follow pagination if we need more servers
+      while (nextUrl && servers.length < maxServers && pagesProcessed < maxPages) {
+        console.log(`[BattleMetrics] Fetching page ${pagesProcessed + 1} (have ${servers.length}/${maxServers} servers)...`);
+        
+        const nextData = await this.fetchFromUrl(nextUrl);
+        if (!nextData || !nextData.data || nextData.data.length === 0) {
           break;
         }
+
+        this.processServerPage(nextData.data, servers, seenAddresses, maxServers);
+        nextUrl = nextData.links?.next;
+        pagesProcessed++;
+
+        // Small delay to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      console.log(`[BattleMetrics] Discovered ${servers.length} DayZ servers`);
+      console.log(`[BattleMetrics] Discovered ${servers.length} quality DayZ servers (${pagesProcessed} pages)`);
       return servers;
     } catch (error) {
       console.error('[BattleMetrics] Failed to discover servers:', error);
       return servers;
+    }
+  }
+
+  private processServerPage(
+    data: BattleMetricsServer[],
+    servers: Array<{address: string; name: string; playerCount: number; maxPlayers: number; map?: string}>,
+    seenAddresses: Set<string>,
+    maxServers: number
+  ): void {
+    for (const server of data) {
+      if (servers.length >= maxServers) {
+        break;
+      }
+
+      const serverName = server.attributes.name || '';
+      
+      // Skip servers that have been moved (stale listings)
+      if (serverName.toUpperCase().includes('MOVED') || 
+          serverName.toUpperCase().includes('MIGRATED') ||
+          serverName.toUpperCase().includes('RELOCATED')) {
+        continue;
+      }
+      
+      const address = server.attributes.address || `${server.attributes.ip}:${server.attributes.port}`;
+      
+      // Deduplicate by address
+      if (seenAddresses.has(address)) {
+        continue;
+      }
+      
+      seenAddresses.add(address);
+      servers.push({
+        address,
+        name: serverName,
+        playerCount: server.attributes.players,
+        maxPlayers: server.attributes.maxPlayers,
+        map: server.attributes.details?.map,
+      });
+    }
+  }
+
+  private async fetchFromUrl(url: string): Promise<BattleMetricsServerListResponse | null> {
+    if (!BATTLEMETRICS_API_KEY) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${BATTLEMETRICS_API_KEY}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      return null;
     }
   }
 
