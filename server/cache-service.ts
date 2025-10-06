@@ -30,7 +30,7 @@ export class CacheService {
     }
   }
 
-  async discoverAndQueryNewServers(maxServers = 20) {
+  async discoverAndQueryNewServers(maxServers = 100) {
     try {
       console.log(`[Cache] Discovering up to ${maxServers} new DayZ servers via BattleMetrics...`);
       const servers = await battleMetricsService.discoverDayZServers(maxServers);
