@@ -196,7 +196,7 @@ export function ServerBrowser({
               <span className="text-muted-foreground">Showing </span>
               <span className="text-primary-glow font-bold font-display text-lg" data-testid="text-filtered-count">{sortedServers.length}</span>
               <span className="text-muted-foreground"> of </span>
-              <span className="text-foreground font-semibold" data-testid="text-total-count">{servers.length}</span>
+              <span className="text-foreground font-semibold" data-testid="text-total-count">{allServers.length}</span>
               <span className="text-muted-foreground"> servers</span>
             </div>
             <div className="flex gap-2">

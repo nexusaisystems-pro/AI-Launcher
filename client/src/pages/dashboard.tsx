@@ -34,6 +34,14 @@ export default function Dashboard() {
   };
 
   const handleRefresh = () => {
+    // Clear any pending search timeout to prevent race conditions
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = null;
+    }
+    setSearchQuery("");
+    setAiFilters(null);
+    setRealtimeResults([]);
     refetch();
   };
 
@@ -121,10 +129,10 @@ export default function Dashboard() {
       clearTimeout(searchTimeoutRef.current);
     }
     
-    if (!value.trim()) {
+    if (!value.trim() || value.trim().length < 2) {
       setAiFilters(null);
       setRealtimeResults([]);
-    } else if (value.trim().length >= 2) {
+    } else {
       // Trigger real-time search automatically when user types (debounced)
       searchTimeoutRef.current = setTimeout(() => {
         handleRealtimeSearch();
