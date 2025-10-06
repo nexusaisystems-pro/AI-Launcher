@@ -148,6 +148,7 @@ export class BattleMetricsService {
         map: attrs.details?.map,
         version: attrs.details?.version,
         queryStatus: attrs.queryStatus,
+        modNames: attrs.details?.modNames || [],
       },
     };
   }

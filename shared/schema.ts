@@ -58,7 +58,7 @@ export const servers = pgTable("servers", {
   perspective: varchar("perspective", { length: 10 }), // "1PP", "3PP", "Both"
   region: varchar("region", { length: 50 }),
   version: varchar("version", { length: 50 }),
-  mods: jsonb("mods").$type<ServerMod[]>().default([]),
+  mods: jsonb("mods").$type<ServerMod[]>().notNull().default([]),
   queue: integer("queue").default(0),
   verified: boolean("verified").default(false),
   lastWipe: timestamp("last_wipe"),
@@ -218,6 +218,7 @@ export interface BattleMetricsDetails {
   map?: string;
   version?: string;
   queryStatus?: string;
+  modNames?: string[];
 }
 
 export interface ServerFilters {
