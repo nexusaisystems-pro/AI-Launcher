@@ -225,7 +225,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          return serverData;
+          const bmCache = await storage.getBattleMetricsCache(dbServer.id);
+          const quality = serverIntelligence.calculateQualityScore(dbServer, bmCache);
+          
+          return {
+            ...serverData,
+            intelligence: {
+              qualityScore: quality.score,
+              grade: quality.grade,
+              verified: quality.verified,
+              trustIndicators: quality.trustIndicators,
+              fraudFlags: quality.fraudFlags,
+              battlemetricsRank: bmCache?.rank || null,
+              battlemetricsStatus: bmCache?.status || null,
+              battlemetricsId: bmCache?.battlemetricsId || null,
+              battlemetricsName: bmCache?.serverName || null,
+              cacheAge: bmCache?.cachedAt 
+                ? Math.floor((Date.now() - new Date(bmCache.cachedAt).getTime()) / (1000 * 60 * 60))
+                : null,
+            }
+          };
         })
       );
       

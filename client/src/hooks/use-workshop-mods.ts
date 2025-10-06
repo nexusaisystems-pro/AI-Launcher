@@ -13,7 +13,7 @@ export function useWorkshopMods(workshopIds: string[]) {
         forceRefresh: false,
       });
       
-      return response as WorkshopMod[];
+      return response as unknown as WorkshopMod[];
     },
     enabled: workshopIds.length > 0,
     staleTime: 1000 * 60 * 60 * 24,
