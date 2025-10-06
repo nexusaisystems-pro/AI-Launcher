@@ -1,5 +1,4 @@
 import { storage } from './storage';
-import { a2sService } from './a2s-service';
 import { battleMetricsService } from './battlemetrics-service';
 import type { Server } from '@shared/schema';
 
@@ -151,8 +150,8 @@ export class CacheService {
         await this.discoverAndQueryNewServers(100);
       }
       
-      // Enrich top servers with BattleMetrics data
-      await this.enrichTopServersWithBattleMetrics();
+      // Enrich servers with BattleMetrics data
+      await this.enrichServersWithBattleMetrics();
       
       const duration = Date.now() - startTime;
       const successRate = ((successCount / this.serverCache.length) * 100).toFixed(1);
@@ -192,40 +191,63 @@ export class CacheService {
     }
   }
 
-  async enrichTopServersWithBattleMetrics(topN = 10) {
+  async enrichServersWithBattleMetrics(servers?: Server[]) {
     try {
-      // Sort servers by player count (descending) and take top N
-      const topServers = [...this.serverCache]
+      const serversToEnrich = servers || [...this.serverCache]
         .sort((a, b) => (b.playerCount || 0) - (a.playerCount || 0))
-        .slice(0, topN);
+        .slice(0, 50);
 
-      if (topServers.length === 0) {
+      if (serversToEnrich.length === 0) {
         return;
       }
 
-      console.log(`[BattleMetrics] Enriching top ${topServers.length} servers...`);
+      console.log(`[BattleMetrics] Enriching ${serversToEnrich.length} servers...`);
 
       let enrichedCount = 0;
-      for (const server of topServers) {
-        // Check if we already have recent BM data (24-hour cache)
+      for (const server of serversToEnrich) {
         const existingCache = await storage.getBattleMetricsCache(server.id);
         const cacheAge = existingCache?.cachedAt 
           ? Date.now() - new Date(existingCache.cachedAt).getTime()
           : Infinity;
         
-        const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+        const detailCacheAge = existingCache?.lastDetailRefresh
+          ? Date.now() - new Date(existingCache.lastDetailRefresh).getTime()
+          : Infinity;
+        
+        const CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
+        const DETAIL_CACHE_MAX_AGE = 15 * 60 * 1000;
 
-        if (cacheAge < CACHE_MAX_AGE) {
-          continue; // Skip if cache is fresh
+        if (cacheAge < CACHE_MAX_AGE && detailCacheAge < DETAIL_CACHE_MAX_AGE) {
+          continue;
         }
 
-        // Fetch fresh BattleMetrics data
         const bmData = await battleMetricsService.searchServerByAddress(server.address);
         if (bmData) {
-          await storage.cacheBattleMetrics({ ...bmData, serverId: server.id });
+          await storage.cacheBattleMetrics({ 
+            ...bmData, 
+            serverId: server.id,
+            lastDetailRefresh: new Date()
+          });
+          
+          if (bmData.workshopIds && Array.isArray(bmData.workshopIds) && bmData.workshopIds.length > 0) {
+            const workshopIds = bmData.workshopIds as string[];
+            const modNames = (bmData.details?.modNames || []) as string[];
+            const modsWithWorkshopIds = workshopIds.map((workshopId, index) => ({
+              id: workshopId,
+              name: modNames[index] || `Mod ${workshopId}`,
+              workshopId: workshopId,
+              size: 0,
+              required: true,
+              installed: false,
+            }));
+            
+            await storage.updateServer(server.address, {
+              mods: modsWithWorkshopIds
+            });
+          }
+          
           enrichedCount++;
           
-          // Small delay to avoid rate limiting (Free tier: 300 req / 5min)
           await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
