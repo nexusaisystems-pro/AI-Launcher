@@ -93,10 +93,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/servers/:address", async (req, res) => {
     try {
       const address = decodeURIComponent(req.params.address);
+      const includeIntelligence = req.query.intelligence === 'true';
       const server = await storage.getServer(address);
+      
       if (!server) {
         return res.status(404).json({ error: "Server not found" });
       }
+
+      if (includeIntelligence) {
+        const existingCache = await storage.getBattleMetricsCache(server.id);
+        const cacheAge = existingCache?.cachedAt 
+          ? Date.now() - new Date(existingCache.cachedAt).getTime()
+          : Infinity;
+        
+        if (cacheAge > 24 * 60 * 60 * 1000 || !existingCache) {
+          const bmData = await battleMetricsService.searchServerByAddress(address);
+          if (bmData) {
+            await storage.cacheBattleMetrics({ 
+              ...bmData, 
+              serverId: server.id,
+              lastDetailRefresh: new Date()
+            });
+          }
+        }
+        
+        const bmData = await storage.getBattleMetricsCache(server.id);
+        const quality = serverIntelligence.calculateQualityScore(server, bmData);
+        
+        return res.json({
+          ...server,
+          intelligence: {
+            qualityScore: quality.score,
+            grade: quality.grade,
+            verified: quality.verified,
+            trustIndicators: quality.trustIndicators,
+            fraudFlags: quality.fraudFlags,
+            battlemetricsRank: bmData?.rank || null,
+            battlemetricsStatus: bmData?.status || null,
+            battlemetricsId: bmData?.battlemetricsId || null,
+            battlemetricsName: bmData?.serverName || null,
+            cacheAge: bmData?.cachedAt 
+              ? Math.floor((Date.now() - new Date(bmData.cachedAt).getTime()) / (1000 * 60 * 60))
+              : null,
+          }
+        });
+      }
+      
       res.json(server);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch server" });
@@ -145,12 +187,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[API] Real-time search for: "${query}"`);
       
-      const servers = await battleMetricsService.searchServersByName(query.trim(), 50);
+      const searchResults = await battleMetricsService.searchServersByName(query.trim(), 50);
+      
+      const enrichedServers = await Promise.all(
+        searchResults.map(async (serverData) => {
+          let dbServer = await storage.getServer(serverData.address);
+          
+          if (!dbServer) {
+            dbServer = await storage.createServer({
+              address: serverData.address,
+              name: serverData.name,
+              map: serverData.map || 'Unknown',
+              playerCount: serverData.playerCount,
+              maxPlayers: serverData.maxPlayers,
+              passwordProtected: serverData.passwordProtected,
+              region: serverData.region,
+              version: serverData.version,
+              mods: serverData.mods || [],
+              verified: serverData.verified || false,
+            });
+          }
+          
+          if (serverData.battlemetricsId) {
+            const existingCache = await storage.getBattleMetricsCache(dbServer.id);
+            const needsEnrichment = !existingCache || 
+              (existingCache.cachedAt && Date.now() - new Date(existingCache.cachedAt).getTime() > 24 * 60 * 60 * 1000);
+            
+            if (needsEnrichment) {
+              const bmData = await battleMetricsService.getServerDetailsWithRelationships(serverData.battlemetricsId);
+              if (bmData) {
+                await storage.cacheBattleMetrics({ 
+                  ...bmData, 
+                  serverId: dbServer.id,
+                  lastDetailRefresh: new Date()
+                });
+              }
+            }
+          }
+          
+          return serverData;
+        })
+      );
       
       res.json({
         query: query.trim(),
-        count: servers.length,
-        servers,
+        count: enrichedServers.length,
+        servers: enrichedServers,
         source: 'battlemetrics',
         cached: false
       });
