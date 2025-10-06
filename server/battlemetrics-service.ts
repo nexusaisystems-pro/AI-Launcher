@@ -188,10 +188,20 @@ export class BattleMetricsService {
       }
 
       for (const server of data.data) {
+        const serverName = server.attributes.name || '';
+        
+        // Skip servers that have been moved (stale listings)
+        if (serverName.toUpperCase().includes('MOVED') || 
+            serverName.toUpperCase().includes('MIGRATED') ||
+            serverName.toUpperCase().includes('RELOCATED')) {
+          console.log(`[BattleMetrics] Skipping moved server: ${serverName}`);
+          continue;
+        }
+        
         const address = server.attributes.address || `${server.attributes.ip}:${server.attributes.port}`;
         servers.push({
           address,
-          name: server.attributes.name,
+          name: serverName,
           playerCount: server.attributes.players,
           maxPlayers: server.attributes.maxPlayers,
           map: server.attributes.details?.map,
