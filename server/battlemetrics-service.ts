@@ -91,7 +91,10 @@ export class BattleMetricsService {
       });
 
       if (!response.ok) {
+        const errorBody = await response.text().catch(() => 'Unable to read error body');
         console.error(`BattleMetrics API returned ${response.status}: ${response.statusText}`);
+        console.error(`URL: ${url.toString()}`);
+        console.error(`Error body: ${errorBody}`);
         return null;
       }
 
