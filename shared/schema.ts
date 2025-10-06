@@ -3,8 +3,34 @@ import { pgTable, text, varchar, integer, boolean, jsonb, timestamp } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Games table for multi-game support
+export const games = pgTable("games", {
+  id: varchar("id", { length: 50 }).primaryKey(), // 'dayz', 'rust', 'arma3', etc.
+  name: varchar("name", { length: 100 }).notNull(), // Display name
+  queryProtocol: varchar("query_protocol", { length: 20 }).notNull(), // 'a2s', 'minecraft', 'custom'
+  steamAppId: integer("steam_app_id"), // For Workshop integration
+  logo: text("logo"), // Logo URL
+  enabled: boolean("enabled").default(true),
+  features: jsonb("features").$type<GameFeatures>().default({}),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Users table for authentication (owners and admins)
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  steamId: varchar("steam_id", { length: 100 }).unique(), // For Steam OAuth
+  displayName: varchar("display_name", { length: 100 }),
+  role: varchar("role", { length: 20 }).notNull().default("owner"), // 'owner', 'admin'
+  emailVerified: boolean("email_verified").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  lastLoginAt: timestamp("last_login_at"),
+});
+
 export const servers = pgTable("servers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gameId: varchar("game_id", { length: 50 }).notNull().default("dayz"), // FK to games
   address: varchar("address", { length: 50 }).notNull().unique(),
   name: text("name").notNull(),
   map: varchar("map", { length: 100 }),
@@ -40,14 +66,51 @@ export const serverAnalytics = pgTable("server_analytics", {
 export const serverOwners = pgTable("server_owners", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   serverAddress: varchar("server_address", { length: 50 }).notNull().unique(),
+  userId: varchar("user_id", { length: 100 }), // FK to users (nullable for backwards compat)
   ownerEmail: varchar("owner_email", { length: 255 }).notNull(),
-  ownerSessionId: varchar("owner_session_id", { length: 100 }).notNull(),
+  ownerSessionId: varchar("owner_session_id", { length: 100 }).notNull(), // Keep for backwards compat
   verificationMethod: varchar("verification_method", { length: 50 }).notNull(), // "server_name", "dns", "steam_admin"
   subscriptionTier: varchar("subscription_tier", { length: 50 }).default("free"), // "free", "insights_pro", "premium"
   subscriptionStatus: varchar("subscription_status", { length: 50 }).default("active"), // "active", "canceled", "trial"
   trialEndsAt: timestamp("trial_ends_at"),
   claimedAt: timestamp("claimed_at").default(sql`CURRENT_TIMESTAMP`),
   verifiedAt: timestamp("verified_at"),
+});
+
+// Pending server claims (replaces verification_tokens with enhanced workflow)
+export const pendingClaims = pgTable("pending_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 100 }).notNull(), // FK to users
+  serverAddress: varchar("server_address", { length: 50 }).notNull(),
+  verificationToken: varchar("verification_token", { length: 20 }).notNull().unique(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // 'pending', 'verified', 'expired', 'rejected'
+  method: varchar("method", { length: 50 }).notNull().default("server_name"),
+  lastCheckedAt: timestamp("last_checked_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Admin activity log
+export const adminActivityLog = pgTable("admin_activity_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminUserId: varchar("admin_user_id", { length: 100 }).notNull(), // FK to users
+  action: varchar("action", { length: 50 }).notNull(), // 'approve_claim', 'reject_claim', 'verify_server', 'ban_owner'
+  targetType: varchar("target_type", { length: 20 }).notNull(), // 'server', 'user', 'claim'
+  targetId: varchar("target_id", { length: 100 }).notNull(),
+  notes: text("notes"),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  timestamp: timestamp("timestamp").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// System metrics for monitoring
+export const systemMetrics = pgTable("system_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  metricType: varchar("metric_type", { length: 50 }).notNull(), // 'api_calls', 'cache_hits', 'a2s_queries', 'openai_tokens'
+  value: integer("value").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  timestamp: timestamp("timestamp").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const verificationTokens = pgTable("verification_tokens", {
@@ -107,6 +170,14 @@ export const battlemetricsCache = pgTable("battlemetrics_cache", {
 });
 
 // Types
+export interface GameFeatures {
+  hasMods?: boolean;
+  hasWorkshop?: boolean;
+  hasVoice?: boolean;
+  hasRanking?: boolean;
+  supportsClaiming?: boolean;
+}
+
 export interface ServerMod {
   id: string;
   name: string;
@@ -194,6 +265,31 @@ export const insertVerificationTokenSchema = createInsertSchema(verificationToke
   createdAt: true,
 });
 
+export const insertGameSchema = createInsertSchema(games).omit({
+  createdAt: true,
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  lastLoginAt: true,
+});
+
+export const insertPendingClaimSchema = createInsertSchema(pendingClaims).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAdminActivityLogSchema = createInsertSchema(adminActivityLog).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertSystemMetricSchema = createInsertSchema(systemMetrics).omit({
+  id: true,
+  timestamp: true,
+});
+
 // Types
 export type InsertServer = z.infer<typeof insertServerSchema>;
 export type Server = typeof servers.$inferSelect;
@@ -209,3 +305,13 @@ export type InsertServerOwner = z.infer<typeof insertServerOwnerSchema>;
 export type ServerOwner = typeof serverOwners.$inferSelect;
 export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSchema>;
 export type VerificationToken = typeof verificationTokens.$inferSelect;
+export type InsertGame = z.infer<typeof insertGameSchema>;
+export type Game = typeof games.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+export type InsertPendingClaim = z.infer<typeof insertPendingClaimSchema>;
+export type PendingClaim = typeof pendingClaims.$inferSelect;
+export type InsertAdminActivityLog = z.infer<typeof insertAdminActivityLogSchema>;
+export type AdminActivityLog = typeof adminActivityLog.$inferSelect;
+export type InsertSystemMetric = z.infer<typeof insertSystemMetricSchema>;
+export type SystemMetric = typeof systemMetrics.$inferSelect;

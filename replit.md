@@ -1,8 +1,13 @@
-# DayZ Server Browser
+# GameHub - Multi-Game Server Browser Platform
 
 ## Overview
 
-A next-generation game launcher and server browser for DayZ with AI-powered features. The application provides a modern web-based interface for discovering, filtering, and joining DayZ servers with automatic mod management and one-click server joining capabilities. Built as a full-stack TypeScript application with React frontend and Express backend.
+A next-generation multi-game launcher and server browser platform with AI-powered features. Currently supporting DayZ with architecture designed for easy expansion to other games (Rust, Arma 3, Squad, etc.). The platform provides a modern web-based interface for discovering, filtering, and joining game servers with automatic mod management and one-click server joining capabilities. Built as a full-stack TypeScript application with React frontend and Express backend.
+
+**Three-Portal Architecture:**
+- **Public Launcher** (/) - Server browser for players (no auth required)
+- **Owner Dashboard** (/owner) - Server management portal for server owners (auth required)
+- **Admin Panel** (/admin) - Platform administration and monitoring (admin auth required)
 
 ## User Preferences
 
@@ -109,11 +114,17 @@ Preferred communication style: Simple, everyday language.
 - Schema-first design with TypeScript types generated from database schema
 
 **Data Models**
-- **Servers**: Core server information (address, name, map, players, mods, region, etc.)
+- **Games** (Added October 2025): Multi-game support table with game metadata, query protocols, Steam app IDs
+- **Users** (Added October 2025): Authentication for server owners and admins (email, Steam OAuth, roles)
+- **Servers**: Core server information with gameId foreign key (address, name, map, players, mods, region, etc.)
+- **Server Owners**: Ownership records linking users to their claimed servers
+- **Pending Claims** (Added October 2025): Server claim verification workflow with token validation and admin review
 - **Server Analytics**: Time-series data for tracking server health and player counts
 - **User Preferences**: Session-based user settings, favorites, and filter preferences
-- **Workshop Mods** (Added October 2025): Cached Steam Workshop mod metadata (title, description, fileSize, previewUrl, tags, creator, subscriberCount) with 7-day cache freshness
-- JSON fields for complex data (mods array, tags, filters)
+- **Workshop Mods**: Cached Steam Workshop mod metadata (title, description, fileSize, previewUrl, tags, creator, subscriberCount) with 7-day cache freshness
+- **Admin Activity Log** (Added October 2025): Audit trail for admin actions
+- **System Metrics** (Added October 2025): Platform monitoring metrics (API calls, cache hits, query stats)
+- JSON fields for complex data (mods array, tags, filters, game features)
 
 **Current Implementation**
 - PostgreSQL database provisioned and active
