@@ -167,6 +167,114 @@ export class BattleMetricsService {
     console.log(`[BattleMetrics] Enriched ${results.size}/${servers.length} servers`);
     return results;
   }
+
+  async discoverDayZServers(maxServers = 100): Promise<Array<{address: string; name: string; playerCount: number; maxPlayers: number; map?: string}>> {
+    console.log(`[BattleMetrics] Discovering up to ${maxServers} DayZ servers...`);
+    
+    const servers: Array<{address: string; name: string; playerCount: number; maxPlayers: number; map?: string}> = [];
+    let pageSize = Math.min(maxServers, 100);
+    
+    try {
+      const data: BattleMetricsServerListResponse = await this.fetchFromBattleMetrics('/servers', {
+        'filter[game]': 'dayz',
+        'page[size]': String(pageSize),
+        'sort': '-players',
+      });
+
+      if (!data || !data.data || data.data.length === 0) {
+        console.log('[BattleMetrics] No servers found');
+        return servers;
+      }
+
+      for (const server of data.data) {
+        const address = server.attributes.address || `${server.attributes.ip}:${server.attributes.port}`;
+        servers.push({
+          address,
+          name: server.attributes.name,
+          playerCount: server.attributes.players,
+          maxPlayers: server.attributes.maxPlayers,
+          map: server.attributes.details?.map,
+        });
+
+        if (servers.length >= maxServers) {
+          break;
+        }
+      }
+
+      console.log(`[BattleMetrics] Discovered ${servers.length} DayZ servers`);
+      return servers;
+    } catch (error) {
+      console.error('[BattleMetrics] Failed to discover servers:', error);
+      return servers;
+    }
+  }
+
+  async getServerDetails(address: string): Promise<{
+    address: string;
+    name: string;
+    map?: string;
+    playerCount: number;
+    maxPlayers: number;
+    ping?: number;
+    passwordProtected?: boolean;
+    perspective?: string;
+    region?: string;
+    version?: string;
+    mods?: any[];
+    verified?: boolean;
+  } | null> {
+    const [ip, port] = address.split(':');
+    
+    const data: BattleMetricsServerListResponse = await this.fetchFromBattleMetrics('/servers', {
+      'filter[game]': 'dayz',
+      'filter[search]': `${ip}:${port}`,
+      'page[size]': '1',
+    });
+
+    if (!data || !data.data || data.data.length === 0) {
+      return null;
+    }
+
+    const server = data.data[0];
+    const attrs = server.attributes;
+
+    return {
+      address,
+      name: attrs.name,
+      map: attrs.details?.map,
+      playerCount: attrs.players,
+      maxPlayers: attrs.maxPlayers,
+      ping: undefined,
+      passwordProtected: attrs.private,
+      perspective: undefined,
+      region: this.determineRegionFromCountry(attrs.country),
+      version: attrs.details?.version,
+      mods: attrs.details?.modNames?.map((modName: string) => ({
+        id: modName,
+        name: modName,
+        size: 0,
+        required: true,
+        installed: false,
+      })) || [],
+      verified: attrs.queryStatus === 'valid',
+    };
+  }
+
+  private determineRegionFromCountry(country: string): string {
+    const euCountries = ['GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'PL', 'CZ', 'SE', 'NO', 'DK', 'FI', 'AT', 'CH', 'PT', 'GR', 'RO', 'HU'];
+    const naCountries = ['US', 'CA', 'MX'];
+    const asiaCountries = ['CN', 'JP', 'KR', 'SG', 'TH', 'IN', 'ID', 'MY', 'PH', 'VN'];
+    const oceaniaCountries = ['AU', 'NZ'];
+    const saCountries = ['BR', 'AR', 'CL', 'CO', 'PE'];
+
+    if (euCountries.includes(country)) return 'EU';
+    if (naCountries.includes(country)) return 'NA';
+    if (asiaCountries.includes(country)) return 'ASIA';
+    if (oceaniaCountries.includes(country)) return 'OCE';
+    if (saCountries.includes(country)) return 'SA';
+    
+    return 'Other';
+  }
 }
 
 export const battleMetricsService = new BattleMetricsService();

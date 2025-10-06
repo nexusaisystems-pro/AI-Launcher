@@ -32,43 +32,53 @@ export class CacheService {
 
   async discoverAndQueryNewServers(maxServers = 20) {
     try {
-      console.log(`[Cache] Discovering up to ${maxServers} new DayZ servers...`);
-      const addresses = await a2sService.discoverDayZServers(maxServers);
+      console.log(`[Cache] Discovering up to ${maxServers} new DayZ servers via BattleMetrics...`);
+      const servers = await battleMetricsService.discoverDayZServers(maxServers);
       
-      if (addresses.length === 0) {
+      if (servers.length === 0) {
         console.log('[Cache] No new servers discovered');
         return;
       }
 
-      console.log(`[Cache] Discovered ${addresses.length} servers, querying live data...`);
-      const serverInfos = await a2sService.queryMultipleServers(addresses, this.CONCURRENCY_LIMIT);
+      console.log(`[Cache] Discovered ${servers.length} servers from BattleMetrics`);
       
       let newCount = 0;
-      for (const serverInfo of serverInfos) {
+      let updatedCount = 0;
+      
+      for (const serverInfo of servers) {
         const existing = await storage.getServer(serverInfo.address);
+        
         if (!existing) {
+          // New server - create it
           await storage.createServer({
             address: serverInfo.address,
             name: serverInfo.name,
-            map: serverInfo.map,
+            map: serverInfo.map || 'Unknown',
             playerCount: serverInfo.playerCount,
             maxPlayers: serverInfo.maxPlayers,
-            ping: serverInfo.ping,
-            passwordProtected: serverInfo.passwordProtected,
-            perspective: serverInfo.perspective,
-            region: serverInfo.region,
-            version: serverInfo.version,
-            mods: serverInfo.mods,
-            verified: serverInfo.verified,
+            ping: undefined,
+            passwordProtected: false,
+            perspective: undefined,
+            region: undefined,
+            version: undefined,
+            mods: [],
+            verified: false,
           });
           newCount++;
+        } else {
+          // Existing server - update it
+          await storage.updateServer(serverInfo.address, {
+            name: serverInfo.name,
+            map: serverInfo.map || existing.map,
+            playerCount: serverInfo.playerCount,
+            maxPlayers: serverInfo.maxPlayers,
+          });
+          updatedCount++;
         }
       }
       
-      if (newCount > 0) {
-        await this.loadFromDatabase();
-        console.log(`[Cache] Added ${newCount} new servers to database`);
-      }
+      await this.loadFromDatabase();
+      console.log(`[Cache] Added ${newCount} new servers, updated ${updatedCount} existing servers`);
     } catch (error) {
       console.error('[Cache] Failed to discover new servers:', error);
     }
@@ -82,33 +92,51 @@ export class CacheService {
 
     this.isRefreshing = true;
     try {
-      console.log(`[Cache] Refreshing ${this.serverCache.length} servers...`);
+      console.log(`[Cache] Refreshing ${this.serverCache.length} servers via BattleMetrics...`);
       const startTime = Date.now();
       
-      const addresses = this.serverCache.map(s => s.address);
-      const updatedServers = await a2sService.queryMultipleServers(addresses, this.CONCURRENCY_LIMIT);
+      let successCount = 0;
+      const batchSize = 5;
       
-      for (const serverInfo of updatedServers) {
-        await storage.updateServer(serverInfo.address, {
-          name: serverInfo.name,
-          map: serverInfo.map,
-          playerCount: serverInfo.playerCount,
-          maxPlayers: serverInfo.maxPlayers,
-          ping: serverInfo.ping,
-          passwordProtected: serverInfo.passwordProtected,
-          perspective: serverInfo.perspective,
-          region: serverInfo.region,
-          version: serverInfo.version,
-          mods: serverInfo.mods,
-          verified: serverInfo.verified,
-        });
+      // Process servers in batches to avoid rate limiting
+      for (let i = 0; i < this.serverCache.length; i += batchSize) {
+        const batch = this.serverCache.slice(i, i + batchSize);
+        
+        await Promise.all(batch.map(async (server) => {
+          try {
+            const serverDetails = await battleMetricsService.getServerDetails(server.address);
+            
+            if (serverDetails) {
+              await storage.updateServer(server.address, {
+                name: serverDetails.name,
+                map: serverDetails.map || server.map,
+                playerCount: serverDetails.playerCount,
+                maxPlayers: serverDetails.maxPlayers,
+                passwordProtected: serverDetails.passwordProtected,
+                region: serverDetails.region,
+                version: serverDetails.version,
+                mods: serverDetails.mods,
+                verified: serverDetails.verified,
+              });
 
-        await storage.addServerAnalytics({
-          serverAddress: serverInfo.address,
-          playerCount: serverInfo.playerCount,
-          responseTime: serverInfo.ping,
-          isOnline: true,
-        });
+              await storage.addServerAnalytics({
+                serverAddress: server.address,
+                playerCount: serverDetails.playerCount,
+                responseTime: 0,
+                isOnline: true,
+              });
+              
+              successCount++;
+            }
+          } catch (error) {
+            console.error(`[Cache] Failed to refresh ${server.address}:`, error);
+          }
+        }));
+        
+        // Small delay between batches to avoid rate limiting
+        if (i + batchSize < this.serverCache.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
 
       await this.loadFromDatabase();
@@ -117,8 +145,8 @@ export class CacheService {
       await this.enrichTopServersWithBattleMetrics();
       
       const duration = Date.now() - startTime;
-      const successRate = ((updatedServers.length / addresses.length) * 100).toFixed(1);
-      console.log(`[Cache] Refresh complete: ${updatedServers.length}/${addresses.length} servers (${successRate}%) in ${(duration / 1000).toFixed(1)}s`);
+      const successRate = ((successCount / this.serverCache.length) * 100).toFixed(1);
+      console.log(`[Cache] Refresh complete: ${successCount}/${this.serverCache.length} servers (${successRate}%) in ${(duration / 1000).toFixed(1)}s`);
       
       this.lastRefreshTime = new Date();
     } catch (error) {
