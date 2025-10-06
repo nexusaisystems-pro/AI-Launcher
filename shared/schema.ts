@@ -182,8 +182,13 @@ export const battlemetricsCache = pgTable("battlemetrics_cache", {
   status: varchar("status", { length: 20 }),
   country: varchar("country", { length: 50 }),
   cityName: varchar("city_name", { length: 100 }),
+  organizationId: varchar("organization_id", { length: 50 }),
+  organizationName: varchar("organization_name", { length: 255 }),
+  serverTags: jsonb("server_tags").$type<string[]>().default([]),
+  workshopIds: jsonb("workshop_ids").$type<string[]>().default([]),
   details: jsonb("details").$type<BattleMetricsDetails>(),
   cachedAt: timestamp("cached_at").default(sql`CURRENT_TIMESTAMP`),
+  lastDetailRefresh: timestamp("last_detail_refresh"),
 });
 
 // Types

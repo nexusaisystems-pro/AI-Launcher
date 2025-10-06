@@ -23,6 +23,7 @@ interface BattleMetricsServer {
       official?: boolean;
       modNames?: string[];
       time?: string;
+      tags?: string[];
       [key: string]: any;
     };
     private: boolean;
@@ -32,6 +33,24 @@ interface BattleMetricsServer {
     country: string;
     queryStatus: string;
   };
+  relationships?: {
+    organization?: {
+      data?: {
+        id: string;
+        type: string;
+      };
+    };
+    [key: string]: any;
+  };
+}
+
+interface BattleMetricsIncluded {
+  id: string;
+  type: string;
+  attributes?: {
+    name?: string;
+    [key: string]: any;
+  };
 }
 
 interface BattleMetricsServerListResponse {
@@ -39,11 +58,12 @@ interface BattleMetricsServerListResponse {
   links?: {
     next?: string;
   };
-  included?: any[];
+  included?: BattleMetricsIncluded[];
 }
 
 interface BattleMetricsServerResponse {
   data: BattleMetricsServer;
+  included?: BattleMetricsIncluded[];
 }
 
 export class BattleMetricsService {
@@ -89,6 +109,7 @@ export class BattleMetricsService {
       'filter[game]': 'dayz',
       'filter[search]': `${ip}:${port}`,
       'page[size]': '1',
+      'include': 'organization',
     });
 
     if (!data || !data.data || data.data.length === 0) {
@@ -97,11 +118,13 @@ export class BattleMetricsService {
     }
 
     const server = data.data[0];
-    return this.mapToCacheEntry(server, address);
+    return this.mapToCacheEntry(server, address, data.included);
   }
 
   async getServerById(battlemetricsId: string): Promise<InsertBattleMetricsCache | null> {
-    const data: BattleMetricsServerResponse = await this.fetchFromBattleMetrics(`/servers/${battlemetricsId}`);
+    const data: BattleMetricsServerResponse = await this.fetchFromBattleMetrics(`/servers/${battlemetricsId}`, {
+      'include': 'organization',
+    });
 
     if (!data || !data.data) {
       console.log(`[BattleMetrics] No server found for ID: ${battlemetricsId}`);
@@ -110,10 +133,25 @@ export class BattleMetricsService {
 
     const server = data.data;
     const address = server.attributes.address || `${server.attributes.ip}:${server.attributes.port}`;
-    return this.mapToCacheEntry(server, address);
+    return this.mapToCacheEntry(server, address, data.included);
   }
 
-  async searchServersByName(query: string, maxResults = 50): Promise<Array<{
+  async getServerDetailsWithRelationships(battlemetricsId: string): Promise<InsertBattleMetricsCache | null> {
+    const data: BattleMetricsServerResponse = await this.fetchFromBattleMetrics(`/servers/${battlemetricsId}`, {
+      'include': 'organization'
+    });
+
+    if (!data || !data.data) {
+      console.log(`[BattleMetrics] No server details found for ID: ${battlemetricsId}`);
+      return null;
+    }
+
+    const server = data.data;
+    const address = server.attributes.address || `${server.attributes.ip}:${server.attributes.port}`;
+    return this.mapToCacheEntry(server, address, data.included);
+  }
+
+  async searchServersByName(query: string, maxResults = 50, useFullTextSearch = true): Promise<Array<{
     address: string;
     name: string;
     map?: string;
@@ -126,18 +164,27 @@ export class BattleMetricsService {
     version?: string;
     mods?: any[];
     verified?: boolean;
+    battlemetricsId?: string;
+    tags?: string[];
   }>> {
-    console.log(`[BattleMetrics] Searching for servers matching: "${query}"`);
+    console.log(`[BattleMetrics] Searching for servers matching: "${query}" (fullText: ${useFullTextSearch})`);
     
     const results: Array<any> = [];
     
     try {
-      const data: BattleMetricsServerListResponse = await this.fetchFromBattleMetrics('/servers', {
+      const searchParams: Record<string, string> = {
         'filter[game]': 'dayz',
-        'filter[search]': query,
         'page[size]': String(Math.min(maxResults, 100)),
         'sort': '-players',
-      });
+      };
+
+      if (useFullTextSearch) {
+        searchParams['filter[search]'] = query;
+      } else {
+        searchParams['filter[search]'] = query;
+      }
+
+      const data: BattleMetricsServerListResponse = await this.fetchFromBattleMetrics('/servers', searchParams);
 
       if (!data || !data.data || data.data.length === 0) {
         console.log(`[BattleMetrics] No servers found matching: "${query}"`);
@@ -167,6 +214,8 @@ export class BattleMetricsService {
             installed: false,
           })) || [],
           verified: attrs.queryStatus === 'valid',
+          battlemetricsId: server.id,
+          tags: attrs.details?.tags || [],
         });
 
         if (results.length >= maxResults) {
@@ -182,12 +231,30 @@ export class BattleMetricsService {
     }
   }
 
-  private mapToCacheEntry(server: BattleMetricsServer, serverAddress: string): InsertBattleMetricsCache {
+  private mapToCacheEntry(
+    server: BattleMetricsServer, 
+    serverAddress: string, 
+    included?: BattleMetricsIncluded[]
+  ): InsertBattleMetricsCache {
     const attrs = server.attributes;
     
     const cityName = attrs.location && attrs.location.length > 0 
       ? attrs.location.slice(0, 2).join(', ') 
       : undefined;
+
+    let organizationId: string | null = null;
+    let organizationName: string | null = null;
+
+    if (server.relationships?.organization?.data && included) {
+      const orgId = server.relationships.organization.data.id;
+      const orgData = included.find(inc => inc.type === 'organization' && inc.id === orgId);
+      if (orgData) {
+        organizationId = orgId;
+        organizationName = orgData.attributes?.name || null;
+      }
+    }
+
+    const workshopIds = this.extractWorkshopIds(attrs.details?.modNames || []);
 
     return {
       serverId: server.id,
@@ -204,6 +271,10 @@ export class BattleMetricsService {
       status: attrs.status,
       country: attrs.country,
       cityName,
+      organizationId,
+      organizationName,
+      serverTags: attrs.details?.tags || [],
+      workshopIds,
       details: {
         firstSeen: attrs.createdAt,
         lastSeen: attrs.updatedAt,
@@ -219,7 +290,21 @@ export class BattleMetricsService {
         queryStatus: attrs.queryStatus,
         modNames: attrs.details?.modNames || [],
       },
+      lastDetailRefresh: null,
     };
+  }
+
+  private extractWorkshopIds(modNames: string[]): string[] {
+    const workshopIds: string[] = [];
+    
+    for (const modName of modNames) {
+      const match = modName.match(/@(\d+)/);
+      if (match && match[1]) {
+        workshopIds.push(match[1]);
+      }
+    }
+    
+    return workshopIds;
   }
 
   async enrichServersWithBattleMetrics(servers: Array<{ id: string; address: string }>): Promise<Map<string, InsertBattleMetricsCache>> {
