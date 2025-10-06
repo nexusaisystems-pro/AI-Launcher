@@ -73,8 +73,8 @@ export function ServerBrowser({
         }
       }
 
-      // Search filter (only apply if no AI filters)
-      if (searchQuery && !aiFilters) {
+      // Search filter (only apply if no AI filters and no realtime results)
+      if (searchQuery && !aiFilters && realtimeResults.length === 0) {
         const query = searchQuery.toLowerCase();
         if (!server.name.toLowerCase().includes(query) &&
             !server.address.toLowerCase().includes(query) &&
