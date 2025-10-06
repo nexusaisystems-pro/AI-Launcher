@@ -195,6 +195,9 @@ export class BattleMetricsService {
         const attrs = server.attributes;
         const address = attrs.address || `${attrs.ip}:${attrs.port}`;
         
+        const modNames = attrs.details?.modNames || [];
+        const workshopIds = this.extractWorkshopIds(modNames);
+        
         results.push({
           address,
           name: attrs.name,
@@ -206,13 +209,14 @@ export class BattleMetricsService {
           perspective: undefined,
           region: this.determineRegionFromCountry(attrs.country),
           version: attrs.details?.version,
-          mods: attrs.details?.modNames?.map((modName: string) => ({
-            id: modName,
+          mods: modNames.map((modName: string, index: number) => ({
+            id: workshopIds[index] || modName,
             name: modName,
+            workshopId: workshopIds[index],
             size: 0,
             required: true,
             installed: false,
-          })) || [],
+          })),
           verified: attrs.queryStatus === 'valid',
           battlemetricsId: server.id,
           tags: attrs.details?.tags || [],
