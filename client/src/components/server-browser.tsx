@@ -17,6 +17,7 @@ interface ServerBrowserProps {
   onServerSelect: (server: ServerWithIntelligence) => void;
   onServerJoin: (server: ServerWithIntelligence) => void;
   aiFilters?: ServerFilters | null;
+  realtimeResults?: any[];
 }
 
 export function ServerBrowser({ 
@@ -26,19 +27,29 @@ export function ServerBrowser({
   selectedServer, 
   onServerSelect, 
   onServerJoin,
-  aiFilters 
+  aiFilters,
+  realtimeResults = []
 }: ServerBrowserProps) {
   const [filters, setFilters] = useState<ServerFilters>({});
   const [sortBy, setSortBy] = useState("players");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // Merge cached servers with real-time search results
+  const allServers = useMemo(() => {
+    if (realtimeResults && realtimeResults.length > 0) {
+      // When we have real-time results, show those (they're already filtered by search)
+      return realtimeResults;
+    }
+    return servers;
+  }, [servers, realtimeResults]);
+
   // Filter and search servers (memoized for performance)
   const filteredServers = useMemo(() => {
     // Merge AI filters with manual filters (AI filters take precedence)
     const combinedFilters = { ...filters, ...(aiFilters || {}) };
     
-    return servers.filter(server => {
+    return allServers.filter(server => {
       // Favorites filter (if active, show only favorited servers)
       // Note: if favoriteAddresses is defined but empty, we show NO servers (since there are no favorites)
       if (combinedFilters.favoriteAddresses !== undefined) {
@@ -105,7 +116,7 @@ export function ServerBrowser({
 
       return true;
     });
-  }, [servers, searchQuery, filters, aiFilters]);
+  }, [allServers, searchQuery, filters, aiFilters]);
 
   // Sort servers (memoized for performance)
   const sortedServers = useMemo(() => [...filteredServers].sort((a, b) => {

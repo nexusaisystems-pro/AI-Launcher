@@ -132,6 +132,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Real-time search ALL DayZ servers on BattleMetrics (not just cached)
+  app.get("/api/servers/search/realtime", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      
+      if (!query || query.trim().length < 2) {
+        return res.status(400).json({ 
+          error: "Search query must be at least 2 characters" 
+        });
+      }
+
+      console.log(`[API] Real-time search for: "${query}"`);
+      
+      const servers = await battleMetricsService.searchServersByName(query.trim(), 50);
+      
+      res.json({
+        query: query.trim(),
+        count: servers.length,
+        servers,
+        source: 'battlemetrics',
+        cached: false
+      });
+    } catch (error) {
+      console.error('[API] Real-time search failed:', error);
+      res.status(500).json({ error: "Search failed" });
+    }
+  });
+
   // Claim server ownership
   app.post("/api/servers/:address/claim", async (req, res) => {
     try {

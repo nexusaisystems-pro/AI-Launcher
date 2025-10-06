@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ServerBrowser } from "@/components/server-browser";
 import { ServerDetailPanel } from "@/components/server-detail-panel";
 import { JoinModal } from "@/components/join-modal";
@@ -16,6 +16,9 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [aiFilters, setAiFilters] = useState<ServerFilters | null>(null);
   const [isAiSearching, setIsAiSearching] = useState(false);
+  const [realtimeResults, setRealtimeResults] = useState<any[]>([]);
+  const [isSearchingRealtime, setIsSearchingRealtime] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { data: servers = [], isLoading, refetch } = useServers("/api/servers", undefined, true);
   const { data: statsData } = useServers("/api/stats");
@@ -53,12 +56,90 @@ export default function Dashboard() {
     }
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    if (!value.trim()) {
-      setAiFilters(null);
+  const handleRealtimeSearch = async () => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      setRealtimeResults([]);
+      return;
+    }
+
+    setIsSearchingRealtime(true);
+    try {
+      const response = await fetch(`/api/servers/search/realtime?q=${encodeURIComponent(searchQuery.trim())}`);
+      const data = await response.json();
+      
+      if (data.servers) {
+        console.log(`[Dashboard] Found ${data.servers.length} servers from BattleMetrics real-time search`);
+        
+        // Transform realtime results to match ServerWithIntelligence shape
+        const transformedServers = data.servers.map((server: any) => ({
+          ...server,
+          // Required Server fields
+          id: server.address, // Use address as ID for realtime results
+          gameId: 'dayz',
+          queue: server.queue || 0,
+          lastWipe: server.lastWipe || null,
+          restartSchedule: server.restartSchedule || null,
+          lastSeen: server.lastSeen || new Date().toISOString(),
+          uptime: server.uptime || 0,
+          tags: server.tags || [],
+          // Intelligence field
+          intelligence: {
+            qualityScore: 0,
+            grade: 'N/A' as const,
+            verified: server.verified || false,
+            trustIndicators: {
+              uptime7d: null,
+              rank: null,
+              trend: 'unknown' as const,
+              playerConsistency: 0,
+              a2sVsBmMatch: 0
+            },
+            fraudFlags: [],
+            battlemetricsRank: null,
+            battlemetricsStatus: null,
+            battlemetricsId: null,
+            battlemetricsName: server.name,
+            cacheAge: null
+          }
+        }));
+        
+        setRealtimeResults(transformedServers);
+      }
+    } catch (error) {
+      console.error("Real-time search failed:", error);
+      setRealtimeResults([]);
+    } finally {
+      setIsSearchingRealtime(false);
     }
   };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    if (!value.trim()) {
+      setAiFilters(null);
+      setRealtimeResults([]);
+    } else if (value.trim().length >= 2) {
+      // Trigger real-time search automatically when user types (debounced)
+      searchTimeoutRef.current = setTimeout(() => {
+        handleRealtimeSearch();
+      }, 600); // Debounce 600ms
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -85,7 +166,7 @@ export default function Dashboard() {
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-primary/60 group-focus-within:text-primary transition-colors" />
               <Input 
                 type="text" 
-                placeholder="Try: 'vanilla servers with low ping' or 'high pop namalsk servers'" 
+                placeholder="Search ALL DayZ servers (downbad, roleplay, hardcore...) or use AI filters" 
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAiSearch()}
@@ -193,12 +274,13 @@ export default function Dashboard() {
       <main className="flex-1 flex overflow-hidden">
         <ServerBrowser 
           servers={Array.isArray(servers) ? servers : []}
-          isLoading={isLoading}
+          isLoading={isLoading || isSearchingRealtime}
           searchQuery={searchQuery}
           selectedServer={selectedServer}
           onServerSelect={handleServerSelect}
           onServerJoin={handleJoinServer}
           aiFilters={aiFilters}
+          realtimeResults={realtimeResults}
         />
         
         {selectedServer && (

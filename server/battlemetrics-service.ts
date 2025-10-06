@@ -113,6 +113,75 @@ export class BattleMetricsService {
     return this.mapToCacheEntry(server, address);
   }
 
+  async searchServersByName(query: string, maxResults = 50): Promise<Array<{
+    address: string;
+    name: string;
+    map?: string;
+    playerCount: number;
+    maxPlayers: number;
+    ping?: number;
+    passwordProtected?: boolean;
+    perspective?: string;
+    region?: string;
+    version?: string;
+    mods?: any[];
+    verified?: boolean;
+  }>> {
+    console.log(`[BattleMetrics] Searching for servers matching: "${query}"`);
+    
+    const results: Array<any> = [];
+    
+    try {
+      const data: BattleMetricsServerListResponse = await this.fetchFromBattleMetrics('/servers', {
+        'filter[game]': 'dayz',
+        'filter[search]': query,
+        'page[size]': String(Math.min(maxResults, 100)),
+        'sort': '-players',
+      });
+
+      if (!data || !data.data || data.data.length === 0) {
+        console.log(`[BattleMetrics] No servers found matching: "${query}"`);
+        return results;
+      }
+
+      for (const server of data.data) {
+        const attrs = server.attributes;
+        const address = attrs.address || `${attrs.ip}:${attrs.port}`;
+        
+        results.push({
+          address,
+          name: attrs.name,
+          map: attrs.details?.map,
+          playerCount: attrs.players,
+          maxPlayers: attrs.maxPlayers,
+          ping: undefined,
+          passwordProtected: attrs.private,
+          perspective: undefined,
+          region: this.determineRegionFromCountry(attrs.country),
+          version: attrs.details?.version,
+          mods: attrs.details?.modNames?.map((modName: string) => ({
+            id: modName,
+            name: modName,
+            size: 0,
+            required: true,
+            installed: false,
+          })) || [],
+          verified: attrs.queryStatus === 'valid',
+        });
+
+        if (results.length >= maxResults) {
+          break;
+        }
+      }
+
+      console.log(`[BattleMetrics] Found ${results.length} servers matching: "${query}"`);
+      return results;
+    } catch (error) {
+      console.error('[BattleMetrics] Search failed:', error);
+      return results;
+    }
+  }
+
   private mapToCacheEntry(server: BattleMetricsServer, serverAddress: string): InsertBattleMetricsCache {
     const attrs = server.attributes;
     
