@@ -4,8 +4,8 @@ export interface TrustIndicators {
   uptime7d: number | null;
   rank: number | null;
   trend: "rising" | "stable" | "declining" | "unknown";
-  playerConsistency: number;
-  a2sVsBmMatch: number;
+  playerActivity: number;
+  serverAge: number | null;
 }
 
 export interface QualityScore {
@@ -17,7 +17,7 @@ export interface QualityScore {
 }
 
 export interface FraudFlag {
-  type: "INFLATED_PLAYERS" | "FALSE_UPTIME" | "SUSPICIOUS_RANK" | "BM_MISMATCH";
+  type: "SUSPICIOUS_RANK" | "LOW_UPTIME" | "NEW_SERVER" | "INCONSISTENT_DATA";
   severity: "high" | "medium" | "low";
   evidence: string;
 }
@@ -33,8 +33,8 @@ export class ServerIntelligence {
           uptime7d: null,
           rank: null,
           trend: "unknown",
-          playerConsistency: 0,
-          a2sVsBmMatch: 0,
+          playerActivity: 0,
+          serverAge: null,
         },
         fraudFlags: [],
       };
@@ -105,20 +105,28 @@ export class ServerIntelligence {
       score -= 20;
     }
 
-    // Factor 3: Player Count Consistency (20% weight)
-    // Check if A2S player count is reasonably close to BM expected ranges
-    const a2sPlayers = server.playerCount || 0;
+    // Factor 3: Player Activity (20% weight)
+    // Use BattleMetrics player data to assess activity
+    const bmCurrentPlayers = bmData.details?.players ?? 0;
     const bmMaxPlayers = bmData.maxPlayerCount || server.maxPlayers || 100;
     const bmAvgPlayers = bmData.avgPlayerCount7d || 0;
 
-    if (a2sPlayers > bmMaxPlayers * 1.2) {
-      // A2S reports more players than max capacity
-      score -= 20;
-    } else if (bmAvgPlayers > 0 && Math.abs(a2sPlayers - bmAvgPlayers) < bmAvgPlayers * 0.5) {
-      // A2S is within reasonable range of BM average
-      // Small bonus for consistency
-    } else if (a2sPlayers > bmMaxPlayers) {
-      score -= 10;
+    if (bmAvgPlayers > 0) {
+      // Server has consistent player activity
+      const activityRatio = bmAvgPlayers / bmMaxPlayers;
+      if (activityRatio > 0.5) {
+        // High activity server (>50% capacity on average)
+        // No penalty
+      } else if (activityRatio > 0.2) {
+        // Medium activity
+        score -= 5;
+      } else {
+        // Low activity
+        score -= 10;
+      }
+    } else if (bmCurrentPlayers === 0) {
+      // Empty server
+      score -= 15;
     }
 
     // Factor 4: Location Data Available (10% weight)
@@ -154,82 +162,74 @@ export class ServerIntelligence {
   private detectFraud(server: Server, bmData: BattleMetricsCache): FraudFlag[] {
     const flags: FraudFlag[] = [];
 
-    // Flag 1: Inflated player counts
-    const a2sPlayers = server.playerCount || 0;
-    const bmCurrentPlayers = bmData.details?.players ?? null;
-    const bmMaxPlayers = bmData.maxPlayerCount || server.maxPlayers || 100;
-
-    if (bmCurrentPlayers !== null && a2sPlayers > bmCurrentPlayers * 1.5 && a2sPlayers > 5) {
+    // Flag 1: Very low uptime indicates unreliable server
+    if (bmData.uptimePercent7d !== null && bmData.uptimePercent7d < 80) {
       flags.push({
-        type: "INFLATED_PLAYERS",
-        severity: "high",
-        evidence: `A2S reports ${a2sPlayers} players, BattleMetrics shows ${bmCurrentPlayers}`,
-      });
-    }
-
-    // Flag 2: A2S claims more players than max capacity
-    if (a2sPlayers > bmMaxPlayers * 1.2) {
-      flags.push({
-        type: "INFLATED_PLAYERS",
+        type: "LOW_UPTIME",
         severity: "medium",
-        evidence: `A2S reports ${a2sPlayers}/${server.maxPlayers} but BM max is ${bmMaxPlayers}`,
+        evidence: `Server uptime only ${bmData.uptimePercent7d.toFixed(1)}% over last 7 days`,
       });
     }
 
-    // Flag 3: Server claims 100% uptime but BM shows it's new
-    if (server.uptime === 100 && bmData.details?.createdAt) {
+    // Flag 2: Server is very new (less than 7 days old)
+    if (bmData.details?.createdAt) {
       const ageMs = Date.now() - new Date(bmData.details.createdAt).getTime();
       const ageDays = ageMs / (1000 * 60 * 60 * 24);
 
       if (ageDays < 7) {
         flags.push({
-          type: "SUSPICIOUS_RANK",
+          type: "NEW_SERVER",
           severity: "low",
-          evidence: `Server claims 100% uptime but only tracked for ${ageDays.toFixed(1)} days`,
+          evidence: `Server only tracked for ${ageDays.toFixed(1)} days on BattleMetrics`,
         });
       }
     }
 
-    // Flag 4: Very high rank but claims to be established
-    if (bmData.rank && bmData.rank > 80000) {
-      if (server.uptime && server.uptime > 95) {
-        flags.push({
-          type: "BM_MISMATCH",
-          severity: "low",
-          evidence: `High BattleMetrics rank (${bmData.rank}) inconsistent with claimed uptime`,
-        });
-      }
+    // Flag 3: Very poor rank suggests low quality
+    if (bmData.rank && bmData.rank > 100000) {
+      flags.push({
+        type: "SUSPICIOUS_RANK",
+        severity: "low",
+        evidence: `Very poor BattleMetrics rank (${bmData.rank.toLocaleString()})`,
+      });
+    }
+
+    // Flag 4: Inconsistent data (offline status with players)
+    const bmCurrentPlayers = bmData.details?.players ?? 0;
+    if (bmData.status !== "online" && bmCurrentPlayers > 0) {
+      flags.push({
+        type: "INCONSISTENT_DATA",
+        severity: "medium",
+        evidence: `Server marked as ${bmData.status} but shows ${bmCurrentPlayers} players`,
+      });
     }
 
     return flags;
   }
 
   private buildTrustIndicators(server: Server, bmData: BattleMetricsCache): TrustIndicators {
-    // Calculate player consistency
-    const a2sPlayers = server.playerCount || 0;
+    // Calculate player activity based on BattleMetrics data
     const bmAvgPlayers = bmData.avgPlayerCount7d || 0;
+    const bmMaxPlayers = bmData.maxPlayerCount || server.maxPlayers || 100;
     
-    let playerConsistency = 0;
-    if (bmAvgPlayers > 0) {
-      const diff = Math.abs(a2sPlayers - bmAvgPlayers);
-      playerConsistency = Math.max(0, 100 - (diff / bmAvgPlayers) * 100);
+    let playerActivity = 0;
+    if (bmMaxPlayers > 0 && bmAvgPlayers > 0) {
+      playerActivity = Math.round((bmAvgPlayers / bmMaxPlayers) * 100);
     }
 
-    // Calculate A2S vs BM match
-    const bmCurrentPlayers = bmData.details?.players ?? null;
-    let a2sVsBmMatch = 0;
-    if (bmCurrentPlayers !== null) {
-      const maxDiff = Math.max(a2sPlayers, bmCurrentPlayers) || 1;
-      const diff = Math.abs(a2sPlayers - bmCurrentPlayers);
-      a2sVsBmMatch = Math.max(0, 100 - (diff / maxDiff) * 100);
+    // Calculate server age in days
+    let serverAge: number | null = null;
+    if (bmData.details?.createdAt) {
+      const ageMs = Date.now() - new Date(bmData.details.createdAt).getTime();
+      serverAge = Math.floor(ageMs / (1000 * 60 * 60 * 24));
     }
 
     return {
       uptime7d: bmData.uptimePercent7d,
       rank: bmData.rank,
       trend: this.calculateTrend(bmData),
-      playerConsistency: Math.round(playerConsistency),
-      a2sVsBmMatch: Math.round(a2sVsBmMatch),
+      playerActivity: Math.min(100, playerActivity),
+      serverAge,
     };
   }
 
