@@ -411,6 +411,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get server mods with workshop metadata
+  app.get("/api/servers/:address/mods", async (req, res) => {
+    try {
+      const address = decodeURIComponent(req.params.address);
+      const server = await storage.getServer(address);
+      
+      if (!server) {
+        return res.status(404).json({ error: "Server not found" });
+      }
+
+      const modsWithMetadata = await Promise.all(
+        (server.mods || []).map(async (mod) => {
+          if (mod.workshopId) {
+            try {
+              const workshopData = await steamWorkshopService.getWorkshopItemDetails(mod.workshopId);
+              return {
+                ...mod,
+                workshop: workshopData ? {
+                  title: workshopData.title,
+                  author: workshopData.creator,
+                  subscriberCount: workshopData.subscriptions,
+                  fileSize: workshopData.file_size,
+                  lastUpdated: workshopData.time_updated,
+                  previewUrl: workshopData.preview_url,
+                } : null
+              };
+            } catch (error) {
+              console.error(`Failed to fetch workshop data for ${mod.workshopId}:`, error);
+              return mod;
+            }
+          }
+          return mod;
+        })
+      );
+
+      res.json({
+        serverAddress: address,
+        serverName: server.name,
+        mods: modsWithMetadata,
+        totalMods: modsWithMetadata.length,
+      });
+    } catch (error) {
+      console.error('Get server mods error:', error);
+      res.status(500).json({ error: "Failed to fetch server mods" });
+    }
+  });
+
   // Get all servers owned by session
   app.get("/api/servers/owned", async (req, res) => {
     try {
