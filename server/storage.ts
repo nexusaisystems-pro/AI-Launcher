@@ -1,8 +1,12 @@
-import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type WorkshopMod, type InsertWorkshopMod, type BattleMetricsCache, type InsertBattleMetricsCache, type ServerStats, type ServerFilters, type ServerOwner, type InsertServerOwner, type VerificationToken, type InsertVerificationToken, servers, serverAnalytics, userPreferences, workshopMods, battlemetricsCache, serverOwners, verificationTokens } from "@shared/schema";
+import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type WorkshopMod, type InsertWorkshopMod, type BattleMetricsCache, type InsertBattleMetricsCache, type ServerStats, type ServerFilters, type ServerOwner, type InsertServerOwner, type VerificationToken, type InsertVerificationToken, type User, type UpsertUser, servers, serverAnalytics, userPreferences, workshopMods, battlemetricsCache, serverOwners, verificationTokens, users } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations (required for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  
   // Server operations
   getServers(filters?: ServerFilters): Promise<Server[]>;
   getServer(address: string): Promise<Server | undefined>;
@@ -43,6 +47,27 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // User operations (required for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
   async getServers(filters?: ServerFilters): Promise<Server[]> {
     const conditions = [];
     

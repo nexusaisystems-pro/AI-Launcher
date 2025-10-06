@@ -1,7 +1,18 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, jsonb, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Session storage table (required for Replit Auth)
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
 
 // Games table for multi-game support
 export const games = pgTable("games", {
@@ -17,14 +28,20 @@ export const games = pgTable("games", {
 });
 
 // Users table for authentication (owners and admins)
+// Compatible with Replit Auth blueprint requirements
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email", { length: 255 }).notNull().unique(),
+  email: varchar("email", { length: 255 }).unique(),
+  // Replit Auth fields
+  firstName: varchar("first_name", { length: 100 }),
+  lastName: varchar("last_name", { length: 100 }),
+  profileImageUrl: varchar("profile_image_url", { length: 500 }),
+  // Custom fields for platform
   steamId: varchar("steam_id", { length: 100 }).unique(), // For Steam OAuth
-  displayName: varchar("display_name", { length: 100 }),
   role: varchar("role", { length: 20 }).notNull().default("owner"), // 'owner', 'admin'
   emailVerified: boolean("email_verified").default(false),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
   lastLoginAt: timestamp("last_login_at"),
 });
 
@@ -309,6 +326,7 @@ export type InsertGame = z.infer<typeof insertGameSchema>;
 export type Game = typeof games.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert; // Required for Replit Auth
 export type InsertPendingClaim = z.infer<typeof insertPendingClaimSchema>;
 export type PendingClaim = typeof pendingClaims.$inferSelect;
 export type InsertAdminActivityLog = z.infer<typeof insertAdminActivityLogSchema>;

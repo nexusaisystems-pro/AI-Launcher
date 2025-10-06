@@ -10,6 +10,7 @@ import { battleMetricsService } from "./battlemetrics-service";
 import { serverIntelligence } from "./server-intelligence";
 import { OpenAIService, type RecommendationResponse } from "./openai-service";
 import { nanoid } from "nanoid";
+import { setupAuth, isAuthenticated, isOwner, isAdmin } from "./replitAuth";
 
 const serverFiltersSchema = z.object({
   map: z.string().optional(),
@@ -29,6 +30,21 @@ const recommendationsCache = new Map<string, { data: RecommendationResponse; exp
 const RECOMMENDATION_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup Replit Auth
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   // Get all servers with optional filtering
   app.get("/api/servers", async (req, res) => {
     try {
@@ -737,6 +753,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('BattleMetrics API error:', error);
       res.status(500).json({ error: "Failed to fetch BattleMetrics data" });
+    }
+  });
+
+  // ============================================
+  // OWNER PORTAL ROUTES (Requires owner/admin role)
+  // ============================================
+  
+  // Get servers owned by the authenticated user
+  app.get("/api/owner/servers", isAuthenticated, isOwner, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ownedServers = await storage.getOwnedServers(userId);
+      res.json(ownedServers);
+    } catch (error) {
+      console.error("Error fetching owned servers:", error);
+      res.status(500).json({ error: "Failed to fetch owned servers" });
+    }
+  });
+
+  // Create a new server claim request
+  app.post("/api/owner/claims", isAuthenticated, isOwner, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { serverAddress } = req.body;
+      
+      if (!serverAddress) {
+        return res.status(400).json({ error: "Server address is required" });
+      }
+
+      // Check if server exists
+      const server = await storage.getServer(serverAddress);
+      if (!server) {
+        return res.status(404).json({ error: "Server not found" });
+      }
+
+      // Check if already claimed
+      const existingOwner = await storage.getServerOwner(serverAddress);
+      if (existingOwner) {
+        return res.status(400).json({ error: "Server is already claimed" });
+      }
+
+      // Generate verification token
+      const verificationToken = nanoid(16);
+      
+      // Create pending claim (will implement pending claims storage later)
+      // For now, just return the token
+      res.json({
+        message: "Claim created successfully",
+        serverAddress,
+        verificationToken,
+        instructions: `Add this token to your server's name or MOTD: ${verificationToken}`,
+        expiresIn: "72 hours"
+      });
+    } catch (error) {
+      console.error("Error creating claim:", error);
+      res.status(500).json({ error: "Failed to create claim" });
+    }
+  });
+
+  // Get all claims for the authenticated user
+  app.get("/api/owner/claims", isAuthenticated, isOwner, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      // Will implement pending claims retrieval later
+      res.json([]);
+    } catch (error) {
+      console.error("Error fetching claims:", error);
+      res.status(500).json({ error: "Failed to fetch claims" });
+    }
+  });
+
+  // ============================================
+  // ADMIN PORTAL ROUTES (Requires admin role)
+  // ============================================
+  
+  // Get all pending claims
+  app.get("/api/admin/claims", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      // Will implement pending claims retrieval later
+      res.json([]);
+    } catch (error) {
+      console.error("Error fetching pending claims:", error);
+      res.status(500).json({ error: "Failed to fetch pending claims" });
+    }
+  });
+
+  // Approve a claim
+  app.put("/api/admin/claims/:id/approve", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      // Will implement claim approval later
+      res.json({ message: "Claim approved successfully" });
+    } catch (error) {
+      console.error("Error approving claim:", error);
+      res.status(500).json({ error: "Failed to approve claim" });
+    }
+  });
+
+  // Reject a claim
+  app.put("/api/admin/claims/:id/reject", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      // Will implement claim rejection later
+      res.json({ message: "Claim rejected successfully" });
+    } catch (error) {
+      console.error("Error rejecting claim:", error);
+      res.status(500).json({ error: "Failed to reject claim" });
+    }
+  });
+
+  // Get all users
+  app.get("/api/admin/users", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      // Will implement user listing later
+      res.json([]);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Update user role
+  app.put("/api/admin/users/:id/role", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { role } = req.body;
+      
+      if (!["owner", "admin"].includes(role)) {
+        return res.status(400).json({ error: "Invalid role" });
+      }
+
+      // Will implement role update later
+      res.json({ message: "User role updated successfully" });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ error: "Failed to update user role" });
+    }
+  });
+
+  // Get system metrics
+  app.get("/api/admin/metrics", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      // Will implement metrics retrieval later
+      res.json({
+        totalUsers: 0,
+        totalServers: 0,
+        totalClaims: 0,
+        pendingClaims: 0
+      });
+    } catch (error) {
+      console.error("Error fetching metrics:", error);
+      res.status(500).json({ error: "Failed to fetch metrics" });
     }
   });
 
