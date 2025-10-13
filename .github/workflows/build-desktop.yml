@@ -15,13 +15,13 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
-            artifact: GameHub-Launcher-*.AppImage
+            artifact: GameHub Launcher*.AppImage
           - os: windows-latest
             platform: windows
-            artifact: GameHub-Launcher*.exe
+            artifact: GameHub Launcher*.exe
           - os: macos-latest
             platform: mac
-            artifact: GameHub-Launcher*.dmg
+            artifact: GameHub Launcher*.dmg
 
     steps:
       - name: Checkout code
