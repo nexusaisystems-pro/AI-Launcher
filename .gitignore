@@ -1,0 +1,16 @@
+node_modules
+dist
+.DS_Store
+server/public
+vite.config.ts.*
+*.tar.gz
+
+# Electron build outputs (GitHub Actions will build these)
+release/
+out/
+package-dir-staging*/
+*.AppImage
+*.exe
+*.dmg
+*.deb
+*.rpm.git-backup/

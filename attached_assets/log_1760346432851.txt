@@ -1,0 +1,25 @@
+2025-10-13 10:05:28.4648 [SettingsService] Info loading settings 
+2025-10-13 10:05:28.6397 [SettingsService] Info saving settings 
+2025-10-13 10:05:29.6563 [MainViewModel] Info MainViewModel Loaded 
+2025-10-13 10:05:29.7638 [SteamService] Info init 
+2025-10-13 10:05:30.7387 [ApiClient] Info getting https://dayzsalauncher.com/api/v1/launcher/banner/LauncherLeft 
+2025-10-13 10:05:30.9865 [ApiClient] Info getting https://dayzsalauncher.com/api/v1/launcher/version 
+2025-10-13 10:05:31.1046 [ApiClient] Info response https://dayzsalauncher.com/api/v1/launcher/version - 89 
+2025-10-13 10:05:31.1046 [ApiClient] Info response https://dayzsalauncher.com/api/v1/launcher/banner/LauncherLeft - 153 
+2025-10-13 10:05:31.1184 [UpdateChecker] Info Checking for update. Local version: 0.0.5.8 | Remote version: 0.0.5.8 
+2025-10-13 10:05:31.1962 [ApiClient] Info getting https://dayzsalauncher.com/api/v1/launcher/banner/LauncherRight 
+2025-10-13 10:05:31.2628 [ApiClient] Info response https://dayzsalauncher.com/api/v1/launcher/banner/LauncherRight - 46 
+2025-10-13 10:05:31.4174 [ServerListDownloader] Info downloading dayz server list 
+2025-10-13 10:05:31.4174 [ApiClient] Info getting https://dayzsalauncher.com/api/v2/launcher/servers/dayz 
+2025-10-13 10:05:31.4174 [ApiClient] Info getting https://dayzsalauncher.com/api/v2/launcher/listings/dayz 
+2025-10-13 10:05:31.5169 [ApiClient] Info response https://dayzsalauncher.com/api/v2/launcher/listings/dayz - 14370 
+2025-10-13 10:05:32.5463 [ApiClient] Info response https://dayzsalauncher.com/api/v2/launcher/servers/dayz - 27690878 
+2025-10-13 10:05:33.6204 [ServerListDownloader] Info downloading dayz profile list 
+2025-10-13 10:05:33.6204 [ApiClient] Info getting https://dayzsalauncher.com/api/v2/launcher/profiles/dayz 
+2025-10-13 10:05:33.6897 [ApiClient] Info response https://dayzsalauncher.com/api/v2/launcher/profiles/dayz - 15978 
+2025-10-13 10:05:34.1901 [ServerQueryManager] Info Starting query runner 
+2025-10-13 10:05:34.7895 [ApiClient] Info getting https://dayzsalauncher.com/api/v1/launcher/open 
+2025-10-13 10:05:34.8760 [ApiClient] Info response https://dayzsalauncher.com/api/v1/launcher/open - 26 
+2025-10-13 10:05:34.8869 [ApiClient] Info getting https://dayzsalauncher.com/api/v1/launcher/version 
+2025-10-13 10:05:34.9518 [ApiClient] Info response https://dayzsalauncher.com/api/v1/launcher/version - 89 
+2025-10-13 10:05:34.9518 [UpdateChecker] Info Checking for update. Local version: 0.0.5.8 | Remote version: 0.0.5.8 

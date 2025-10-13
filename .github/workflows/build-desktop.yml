@@ -1,0 +1,87 @@
+name: Build Desktop Apps
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            artifact: GameHub-Launcher-*.AppImage
+          - os: windows-latest
+            platform: windows
+            artifact: GameHub-Launcher*.exe
+          - os: macos-latest
+            platform: mac
+            artifact: GameHub-Launcher*.dmg
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web application
+        run: npm run build
+
+      - name: Prepare package.json for Electron
+        shell: bash
+        run: |
+          node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.name = 'gamehub-launcher';
+          pkg.main = 'desktop/main.js';
+          pkg.description = 'GameHub Launcher - Multi-game server browser with desktop mod management';
+          pkg.author = { name: 'Nexus AI Systems', email: 'support@nexusai.systems' };
+          if (pkg.dependencies.electron) {
+            pkg.devDependencies.electron = pkg.dependencies.electron;
+            delete pkg.dependencies.electron;
+          }
+          if (pkg.dependencies['electron-builder']) {
+            pkg.devDependencies['electron-builder'] = pkg.dependencies['electron-builder'];
+            delete pkg.dependencies['electron-builder'];
+          }
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Build Electron app (Linux)
+        if: matrix.platform == 'linux'
+        run: npx electron-builder --linux AppImage
+
+      - name: Build Electron app (Windows)
+        if: matrix.platform == 'windows'
+        run: npx electron-builder --win portable
+
+      - name: Build Electron app (macOS)
+        if: matrix.platform == 'mac'
+        run: npx electron-builder --mac dmg
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-build
+          path: release/${{ matrix.artifact }}
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/${{ matrix.artifact }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,31 @@
+appId: com.nexusai.gamehub
+productName: GameHub Launcher
+directories:
+  output: release
+files:
+  - dist/**/*
+  - desktop/**/*
+  - '!desktop/start-dev.sh'
+  - '!desktop/start-dev.bat'
+  - package.json
+  - node_modules/**/*
+win:
+  target:
+    - portable
+  icon: desktop/icon.png
+linux:
+  target:
+    - AppImage
+  icon: desktop/icon.png
+  category: Game
+mac:
+  target:
+    - dmg
+    - zip
+  icon: desktop/icon.png
+  category: public.app-category.games
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

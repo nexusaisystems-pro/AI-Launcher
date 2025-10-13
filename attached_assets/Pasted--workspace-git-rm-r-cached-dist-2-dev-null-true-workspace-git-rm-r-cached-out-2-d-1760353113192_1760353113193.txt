@@ -1,0 +1,41 @@
+~/workspace$ git rm -r --cached dist/ 2>/dev/null || true
+~/workspace$ git rm -r --cached out/ 2>/dev/null || true
+~/workspace$ git add .gitignore
+git commit -m "Update .gitignore to exclude build artifacts"
+On branch main
+Your branch is ahead of 'origin/main' by 117 commits.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+~/workspace$ git add .gitignore
+~/workspace$ git commit -m "Update .gitignore to exclude build artifacts"
+On branch main
+Your branch is ahead of 'origin/main' by 117 commits.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+~/workspace$ git add .
+~/workspace$ git commit -m "Add desktop app with GitHub Actions distribution"
+On branch main
+Your branch is ahead of 'origin/main' by 117 commits.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+~/workspace$ git push -u origin main --force
+Enumerating objects: 729, done.
+Counting objects: 100% (729/729), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (672/672), done.
+Writing objects: 100% (698/698), 302.78 MiB | 4.65 MiB/s, done.
+Total 698 (delta 461), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (461/461), completed with 22 local objects.
+remote: error: Trace: c0517324bc0bf0bdad925d7d0aca1aea72308bcd922d147968f204e867b7d94c
+remote: error: See https://gh.io/lfs for more information.
+remote: error: File package-dir-staging-b3c015dd13c94f83fedc61db43bef19ed08a9e1d99941d6b4ef239c1081e/opt/GameHub Launcher/gamehub-launcher is 193.35 MB; this exceeds GitHub's file size limit of 100.00 MB
+remote: error: File package-dir-staging-b3c015dd13c94f83fedc61db43bef19ed08a9e1d99941d6b4ef239c1081e/opt/GameHub Launcher/resources/app.asar is 172.41 MB; this exceeds GitHub's file size limit of 100.00 MB
+remote: error: File release/GameHub Launcher-1.0.0.AppImage is 151.49 MB; this exceeds GitHub's file size limit of 100.00 MB
+remote: error: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.
+To https://github.com/nexusaisystems-pro/AI-Launcher
+ ! [remote rejected] main -> main (pre-receive hook declined)
+error: failed to push some refs to 'https://github.com/nexusaisystems-pro/AI-Launcher'
+~/workspace$ 
