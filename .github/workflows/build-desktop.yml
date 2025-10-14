@@ -70,14 +70,23 @@ jobs:
 
       - name: Build Electron app (Linux)
         if: matrix.platform == 'linux'
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+          CI: false
         run: npx electron-builder --linux AppImage
 
       - name: Build Electron app (Windows)
         if: matrix.platform == 'windows'
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+          CI: false
         run: npx electron-builder --win portable
 
       - name: Build Electron app (macOS)
         if: matrix.platform == 'mac'
+        env:
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+          CI: false
         run: npx electron-builder --mac dmg
 
       - name: Upload artifacts
