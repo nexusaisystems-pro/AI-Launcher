@@ -13,4 +13,8 @@ package-dir-staging*/
 *.exe
 *.dmg
 *.deb
-*.rpm.git-backup/
+*.rpm
+
+# Downloaded build artifacts
+attached_assets/*.zip
+.git-backup/
