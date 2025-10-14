@@ -52,6 +52,8 @@ jobs:
           pkg.main = 'desktop/main.js';
           pkg.description = 'GameHub Launcher - Multi-game server browser with desktop mod management';
           pkg.author = { name: 'Nexus AI Systems', email: 'support@nexusai.systems' };
+          pkg.version = '${{ github.ref_name }}'.replace('v', '');
+          delete pkg.repository;
           if (pkg.dependencies.electron) {
             pkg.devDependencies.electron = pkg.dependencies.electron;
             delete pkg.dependencies.electron;
