@@ -205,12 +205,13 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     // In production, load from built files
-    // When packaged, __dirname is inside resources/app.asar, and dist is at the same level
-    const indexPath = app.isPackaged 
-      ? path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html')
-      : path.join(__dirname, '../dist/index.html');
+    // __dirname resolves correctly both in dev and when packaged
+    const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
     
     console.log('[Desktop] Loading from:', indexPath);
+    console.log('[Desktop] __dirname:', __dirname);
+    console.log('[Desktop] File exists:', fs.existsSync(indexPath));
+    
     mainWindow.loadFile(indexPath);
   }
 
