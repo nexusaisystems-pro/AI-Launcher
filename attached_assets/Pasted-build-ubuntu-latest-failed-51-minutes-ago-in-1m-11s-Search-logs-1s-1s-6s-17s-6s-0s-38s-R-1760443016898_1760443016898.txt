@@ -1,0 +1,92 @@
+build (ubuntu-latest)
+failed 51 minutes ago in 1m 11s
+Search logs
+1s
+1s
+6s
+17s
+6s
+0s
+38s
+Run npx electron-builder --linux AppImage
+  • electron-builder  version=26.0.12 os=6.11.0-1018-azure
+  • artifacts will be published  reason=tag is defined tag=v1.0.3
+  • loaded configuration  file=/home/runner/work/AI-Launcher/AI-Launcher/electron-builder.yml
+  • executing @electron/rebuild  electronVersion=38.2.2 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • preparing       moduleName=bufferutil arch=x64
+  • finished        moduleName=bufferutil arch=x64
+  • completed installing native dependencies
+  • packaging       platform=linux arch=x64 electron=38.2.2 appOutDir=release/linux-unpacked
+  • downloading     url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-linux-x64.zip size=115 MB parts=8
+  • downloaded      url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-linux-x64.zip duration=496ms
+  • building        target=AppImage arch=x64 file=release/GameHub Launcher-1.0.0.AppImage
+  • default Electron icon is used  reason=application icon is not set
+  • downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/appimage-12.0.1/appimage-12.0.1.7z size=1.6 MB parts=1
+  • downloaded      url=https://github.com/electron-userland/electron-builder-binaries/releases/download/appimage-12.0.1/appimage-12.0.1.7z duration=253ms
+  • publishing      publisher=Github (owner: nexusaisystems-pro, project: AI-Launcher, version: 1.0.0)
+  • uploading       file=GameHub-Launcher-1.0.0.AppImage provider=github
+  • creating GitHub release  reason=release doesn't exist tag=v1.0.0 version=1.0.0
+  ⨯ 403 Forbidden
+"method: post url: https://api.github.com/repos/nexusaisystems-pro/AI-Launcher/releases\n\n          Data:\n          {\"message\":\"Resource not accessible by integration\",\"documentation_url\":\"https://docs.github.com/rest/releases/releases#create-a-release\",\"status\":\"403\"}\n          "
+Headers: {
+  "date": "Tue, 14 Oct 2025 11:05:00 GMT",
+  "content-type": "application/json; charset=utf-8",
+  "content-length": "153",
+  "x-github-media-type": "github.v3; format=json",
+  "x-accepted-github-permissions": "contents=write; contents=write,workflows=write",
+  "x-github-api-version-selected": "2022-11-28",
+  "x-ratelimit-limit": "5000",
+  "x-ratelimit-remaining": "4994",
+  "x-ratelimit-reset": "1760442251",
+  "x-ratelimit-used": "6",
+  "x-ratelimit-resource": "core",
+  "access-control-expose-headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO, X-GitHub-Request-Id, Deprecation, Sunset",
+  "access-control-allow-origin": "*",
+  "strict-transport-security": "max-age=31536000; includeSubdomains; preload",
+  "x-frame-options": "deny",
+  "x-content-type-options": "nosniff",
+  "x-xss-protection": "0",
+  "referrer-policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+  "content-security-policy": "default-src 'none'",
+  "vary": "Accept-Encoding, Accept, X-Requested-With",
+  "x-github-request-id": "E240:3A48E9:37A63B4:F8B57C7:68EE2E5C",
+  "server": "github.com"
+}  failedTask=build stackTrace=HttpError: 403 Forbidden
+"method: post url: https://api.github.com/repos/nexusaisystems-pro/AI-Launcher/releases\n\n          Data:\n          {\"message\":\"Resource not accessible by integration\",\"documentation_url\":\"https://docs.github.com/rest/releases/releases#create-a-release\",\"status\":\"403\"}\n          "
+Headers: {
+  "date": "Tue, 14 Oct 2025 11:05:00 GMT",
+  "content-type": "application/json; charset=utf-8",
+  "content-length": "153",
+  "x-github-media-type": "github.v3; format=json",
+  "x-accepted-github-permissions": "contents=write; contents=write,workflows=write",
+  "x-github-api-version-selected": "2022-11-28",
+  "x-ratelimit-limit": "5000",
+  "x-ratelimit-remaining": "4994",
+  "x-ratelimit-reset": "1760442251",
+  "x-ratelimit-used": "6",
+  "x-ratelimit-resource": "core",
+  "access-control-expose-headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO, X-GitHub-Request-Id, Deprecation, Sunset",
+  "access-control-allow-origin": "*",
+  "strict-transport-security": "max-age=31536000; includeSubdomains; preload",
+  "x-frame-options": "deny",
+  "x-content-type-options": "nosniff",
+  "x-xss-protection": "0",
+  "referrer-policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+  "content-security-policy": "default-src 'none'",
+  "vary": "Accept-Encoding, Accept, X-Requested-With",
+  "x-github-request-id": "E240:3A48E9:37A63B4:F8B57C7:68EE2E5C",
+  "server": "github.com"
+}
+    at createHttpError (/home/runner/work/AI-Launcher/AI-Launcher/node_modules/builder-util-runtime/src/httpExecutor.ts:31:10)
+    at IncomingMessage.<anonymous> (/home/runner/work/AI-Launcher/AI-Launcher/node_modules/builder-util-runtime/src/httpExecutor.ts:202:13)
+    at IncomingMessage.emit (node:events:536:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:82:21)
+Error: Process completed with exit code 1.
+0s
+0s
+0s
+0s
+0s
+0s
