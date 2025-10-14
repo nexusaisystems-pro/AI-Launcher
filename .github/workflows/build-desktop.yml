@@ -67,15 +67,15 @@ jobs:
 
       - name: Build Electron app (Linux)
         if: matrix.platform == 'linux'
-        run: npx electron-builder --config electron-builder-ci.yml --linux AppImage
+        run: npx electron-builder --config=electron-builder-ci.yml --linux AppImage
 
       - name: Build Electron app (Windows)
         if: matrix.platform == 'windows'
-        run: npx electron-builder --config electron-builder-ci.yml --win portable
+        run: npx electron-builder --config=electron-builder-ci.yml --win portable
 
       - name: Build Electron app (macOS)
         if: matrix.platform == 'mac'
-        run: npx electron-builder --config electron-builder-ci.yml --mac dmg
+        run: npx electron-builder --config=electron-builder-ci.yml --mac dmg
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
