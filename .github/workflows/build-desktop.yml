@@ -1,9 +1,12 @@
 name: Build Desktop Apps
 
 on:
-  release:
-    types: [created]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.3)'
+        required: true
+        default: '1.0.3'
 
 permissions:
   contents: write
@@ -52,7 +55,7 @@ jobs:
           pkg.main = 'desktop/main.js';
           pkg.description = 'GameHub Launcher - Multi-game server browser with desktop mod management';
           pkg.author = { name: 'Nexus AI Systems', email: 'support@nexusai.systems' };
-          pkg.version = '${{ github.ref_name }}'.replace('v', '');
+          pkg.version = '${{ github.event.inputs.version }}';
           delete pkg.repository;
           if (pkg.dependencies.electron) {
             pkg.devDependencies.electron = pkg.dependencies.electron;
@@ -84,9 +87,12 @@ jobs:
           path: release/${{ matrix.artifact }}
 
       - name: Upload to Release
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: GameHub Launcher v${{ github.event.inputs.version }}
           files: release/${{ matrix.artifact }}
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
