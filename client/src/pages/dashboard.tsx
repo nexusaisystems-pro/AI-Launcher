@@ -123,17 +123,9 @@ export default function Dashboard() {
     setSelectedServer(server);
   };
 
-  const handleLogout = async () => {
-    try {
-      // Call logout API to destroy session
-      await fetch('/api/logout', { credentials: 'include' });
-      // Navigate to landing page
-      window.location.hash = '#/';
-    } catch (error) {
-      console.error('Logout failed:', error);
-      // Still navigate to landing even if logout fails
-      window.location.hash = '#/';
-    }
+  const handleLogout = () => {
+    // Use window.location to follow the redirect to Replit's end session URL
+    window.location.href = '/api/logout';
   };
 
   const handleJoinServer = (server: ServerWithIntelligence) => {
