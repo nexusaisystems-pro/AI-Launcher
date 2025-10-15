@@ -31,7 +31,8 @@ export default function Landing() {
   });
 
   const handleSignUp = () => {
-    window.location.href = '/api/login';
+    // For now, navigate to launcher (auth will be implemented next)
+    setLocation('/launcher');
   };
 
   return (

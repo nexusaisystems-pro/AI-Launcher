@@ -335,7 +335,7 @@ export default function Dashboard() {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => window.location.href = '/api/logout'}
+              onClick={() => window.location.hash = '#/'}
               className="glass border border-primary/30 hover:border-red-500/50 hover:bg-red-500/10 transition-all font-semibold"
               data-testid="button-logout"
             >
