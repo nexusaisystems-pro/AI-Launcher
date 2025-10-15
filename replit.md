@@ -5,7 +5,8 @@
 GameHub Launcher is a next-generation multi-game server browser platform by Nexus AI Systems, currently in beta for DayZ and planned for expansion to other games like Rust and Arma 3. It offers AI-powered server recommendations, real-time statistics, automatic mod management, and one-click server joining. The platform is a full-stack TypeScript application with a React frontend and Express backend, designed for 100,000+ players.
 
 The platform includes:
-- A premium, authentication-gated landing page.
+- A multi-game homepage showcasing all supported games (DayZ in beta, 7 games coming soon).
+- Game-specific landing pages with features, stats, and dual CTAs for players and server owners.
 - A main launcher with a server browser for authenticated users.
 - An owner dashboard for verified server owners.
 - An admin panel for platform administration.
@@ -22,7 +23,15 @@ The frontend uses React 18 with TypeScript, Vite for building, Wouter for routin
 
 Performance optimizations include server-side pagination with `useInfiniteQuery`, virtualized scrolling with `@tanstack/react-virtual`, and extensive memoization (React.memo, useMemo) to optimize rendering. Optimistic updates are implemented for UI feedback on actions like favoriting, with debounced backend saves and rollback mechanisms.
 
-Key features include an auth-gated landing page with SEO, advanced server filtering, real-time server status, persistent favorites/recents, a server detail panel, and a join modal with mod validation. Server intelligence features include quality grade badges, trust scores, fraud detection, and intelligence tabs for metrics.
+Key features include a multi-game homepage, game-specific landing pages with SEO, advanced server filtering, real-time server status, persistent favorites/recents, a server detail panel, and a join modal with mod validation. Server intelligence features include quality grade badges, trust scores, fraud detection, and intelligence tabs for metrics.
+
+**Routing Structure (October 2025):**
+- `/` - Multi-game homepage with game selection grid (8 games: DayZ beta + 7 coming soon)
+- `/dayz` - DayZ-specific landing page with features, live stats, dual CTAs ("Browse Servers", "List My Server")
+- `/launcher` - Server browser (authentication optional, favorites require auth)
+- `/owner` - Owner dashboard (requires owner/admin role)
+- `/admin` - Admin panel (requires admin role)
+- `/downloads` - Desktop app downloads page
 
 ### Backend Architecture
 
