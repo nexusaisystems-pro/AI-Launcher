@@ -38,7 +38,36 @@ The primary database is PostgreSQL, accessed via the Neon Database serverless dr
 
 ### Authentication and Authorization
 
-Currently, no authentication system is implemented. Session-based tracking uses nanoid-generated IDs stored in localStorage, which are synced to the PostgreSQL backend for persistent user preferences (favorites/recents). This design allows for seamless migration to future authentication layers like Steam OAuth.
+The platform uses **Replit Auth** (OpenID Connect) for unified authentication across web and desktop applications. Session management uses PostgreSQL-backed sessions with HTTP-only cookies (1-week TTL).
+
+**Web Authentication:**
+- Replit Auth blueprint with Google, GitHub, and Email login options
+- Session stored in PostgreSQL via `connect-pg-simple`
+- HTTP-only cookies with secure signing using `cookie-signature`
+- Role-based middleware: `isAuthenticated`, `isOwner`, `isAdmin`
+- Protected routes for owner/admin features
+- User profile synced to database on first login
+
+**Desktop Authentication:**
+- Custom protocol handler (`gamehub://`) for auth callbacks
+- Desktop login flow:
+  1. User clicks "Sign In with Replit" in desktop app
+  2. Opens system browser to web login page
+  3. Web app redirects to `gamehub://auth?token=SESSION_ID`
+  4. Desktop intercepts protocol, stores signed session cookie
+  5. Desktop fetches user profile via API
+- Session cookie signed with same secret as web (shared cookie-signature)
+- Electron session API (`session.defaultSession.cookies.set()`) manages cookies
+- Cross-platform support: macOS (`open-url`), Windows/Linux (`second-instance`)
+- Desktop API uses production backend URL with `credentials: 'include'`
+- Logout clears server session, Electron cookies, and local storage
+
+**User Roles:**
+- `player`: Default role, access to server browser and favorites
+- `owner`: Can claim and manage servers
+- `admin`: Full platform administration access
+
+**Session-based tracking** still uses nanoid-generated IDs stored in localStorage for anonymous user preferences (favorites/recents), seamlessly upgraded when user authenticates.
 
 ## External Dependencies
 
