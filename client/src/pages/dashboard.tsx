@@ -3,6 +3,7 @@ import { ServerBrowser } from "@/components/server-browser";
 import { ServerDetailPanel } from "@/components/server-detail-panel";
 import { JoinModal } from "@/components/join-modal";
 import { DesktopJoinModal } from "@/components/desktop-join-modal";
+import { DesktopAuth } from "@/components/desktop-auth";
 import { useServers, useServersInfinite } from "@/hooks/use-servers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -333,15 +334,20 @@ export default function Dashboard() {
               <Plus className="w-4 h-4 mr-2" />
               Add Server
             </Button>
-            <Button
-              variant="ghost"
-              onClick={() => window.location.hash = '#/'}
-              className="glass border border-primary/30 hover:border-red-500/50 hover:bg-red-500/10 transition-all font-semibold"
-              data-testid="button-logout"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            {/* Desktop Auth (shows login/user menu in desktop mode) */}
+            <DesktopAuth />
+            {/* Web Logout */}
+            {!isDesktop && (
+              <Button
+                variant="ghost"
+                onClick={() => window.location.hash = '#/'}
+                className="glass border border-primary/30 hover:border-red-500/50 hover:bg-red-500/10 transition-all font-semibold"
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            )}
           </div>
         </div>
         
