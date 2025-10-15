@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Shield, Users, Server, Activity, CheckCircle, XCircle, Clock, UserCircle, Database, Play, RefreshCw } from "lucide-react";
+import { Loader2, Shield, Users, Server, Activity, CheckCircle, XCircle, Clock, UserCircle, Database, Play, RefreshCw, Globe, Briefcase, LogOut } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -182,6 +183,28 @@ export default function AdminPanel() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/launcher">
+              <Button
+                variant="outline"
+                size="sm"
+                className="glass border-primary/30 hover:border-primary/50"
+                data-testid="button-nav-browser"
+              >
+                <Globe className="w-4 h-4 mr-2" />
+                Server Browser
+              </Button>
+            </Link>
+            <Link href="/owner">
+              <Button
+                variant="outline"
+                size="sm"
+                className="glass border-primary/30 hover:border-primary/50"
+                data-testid="button-nav-owner"
+              >
+                <Briefcase className="w-4 h-4 mr-2" />
+                Owner Dashboard
+              </Button>
+            </Link>
             <div className="flex items-center gap-2">
               {user?.profileImageUrl ? (
                 <img 
@@ -207,8 +230,10 @@ export default function AdminPanel() {
               variant="outline"
               size="sm"
               onClick={() => window.location.href = "/api/logout"}
+              className="glass border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10"
               data-testid="button-logout"
             >
+              <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
           </div>
