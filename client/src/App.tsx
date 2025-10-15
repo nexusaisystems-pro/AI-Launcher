@@ -1,10 +1,11 @@
 import { Switch, Route, Router } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DesktopProvider } from "@/contexts/desktop-context";
+import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
@@ -13,10 +14,7 @@ import AdminPanel from "@/pages/admin-panel";
 import Downloads from "@/pages/downloads";
 
 function HomePage() {
-  const { data: user, isLoading } = useQuery({
-    queryKey: ['/api/auth/user'],
-    retry: false,
-  });
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (

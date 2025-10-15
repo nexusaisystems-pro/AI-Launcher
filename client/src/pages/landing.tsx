@@ -31,8 +31,8 @@ export default function Landing() {
   });
 
   const handleSignUp = () => {
-    // For now, navigate to launcher (auth will be implemented next)
-    setLocation('/launcher');
+    // Redirect to Replit Auth login
+    window.location.href = '/api/login';
   };
 
   return (
