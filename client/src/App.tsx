@@ -24,20 +24,34 @@ function HomePage() {
     );
   }
 
+  // Debug logging
+  console.log('[HomePage] User:', user);
+  console.log('[HomePage] User role:', user?.role);
+
+  // TEMP FIX: Invalidate cache to force refetch of user data
+  // This ensures we get the latest role from the database
+  if (user && user.role === "player" && user.email === "nexusaisystems@gmail.com") {
+    console.log('[HomePage] Invalidating user cache to fetch updated role');
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+  }
+
   // Redirect based on user role
   if (!user) return <Landing />;
   
   // Redirect admin users to admin panel
   if (user.role === "admin") {
+    console.log('[HomePage] Redirecting admin to /admin');
     return <Redirect to="/admin" />;
   }
   
   // Redirect owner users to owner dashboard
   if (user.role === "owner") {
+    console.log('[HomePage] Redirecting owner to /owner');
     return <Redirect to="/owner" />;
   }
   
   // Regular users go to server browser
+  console.log('[HomePage] Showing Dashboard for regular user');
   return <Dashboard />;
 }
 
