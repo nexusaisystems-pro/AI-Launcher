@@ -2,6 +2,7 @@
 // Based on blueprint: javascript_log_in_with_replit
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
+import signature from "cookie-signature";
 
 import passport from "passport";
 import session from "express-session";
@@ -120,6 +121,11 @@ export async function setupAuth(app: Express) {
   };
 
   app.get("/api/login", (req, res, next) => {
+    // Store desktop flag in session for callback
+    if (req.query.desktop === 'true') {
+      (req.session as any).isDesktopLogin = true;
+    }
+    
     passport.authenticate(getStrategyName(req.hostname), {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
@@ -127,9 +133,45 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(getStrategyName(req.hostname), {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+    passport.authenticate(getStrategyName(req.hostname), (err, user, info) => {
+      if (err) {
+        return next(err);
+      }
+      if (!user) {
+        return res.redirect("/api/login");
+      }
+      
+      req.logIn(user, (err) => {
+        if (err) {
+          return next(err);
+        }
+        
+        // Check if this was a desktop login
+        const isDesktopLogin = (req.session as any).isDesktopLogin;
+        if (isDesktopLogin) {
+          // Clean up flag
+          delete (req.session as any).isDesktopLogin;
+          
+          // Save session and manually sign the session ID
+          req.session.save((saveErr) => {
+            if (saveErr) {
+              return next(saveErr);
+            }
+            
+            // Manually create signed cookie value using cookie-signature
+            const sessionId = (req.session as any).id;
+            const secret = process.env.SESSION_SECRET!;
+            const signedValue = 's:' + signature.sign(sessionId, secret);
+            
+            // Redirect to desktop protocol with signed session token
+            return res.redirect(`gamehub://auth-callback?token=${encodeURIComponent(signedValue)}`);
+          });
+          return;
+        }
+        
+        // Normal web login
+        res.redirect("/");
+      });
     })(req, res, next);
   });
 

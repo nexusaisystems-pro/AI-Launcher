@@ -18,8 +18,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
   
+  // Auth
+  getAuthToken: () => ipcRenderer.invoke('get-auth-token'),
+  getAuthUser: () => ipcRenderer.invoke('get-auth-user'),
+  openLogin: () => ipcRenderer.invoke('open-login'),
+  logout: () => ipcRenderer.invoke('logout'),
+  
   // Listen for desktop ready event
   onDesktopReady: (callback) => {
     ipcRenderer.on('desktop-ready', (event, data) => callback(data));
+  },
+  
+  // Listen for auth success event
+  onAuthSuccess: (callback) => {
+    ipcRenderer.on('auth-success', (event, data) => callback(data));
   }
 });

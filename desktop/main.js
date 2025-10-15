@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
@@ -11,9 +11,25 @@ const store = new Store({
     steamPath: null,
     favorites: [],
     latestJoined: [],
-    additionalParameters: ''
+    additionalParameters: '',
+    authToken: null,
+    authUser: null
   }
 });
+
+// Production backend URL (or localhost for dev)
+const BACKEND_URL = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:5000'
+  : 'https://gamehublauncher.com';
+
+// Register custom protocol handler for auth callback
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('gamehub', process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('gamehub');
+}
 
 let mainWindow;
 let steamworks;
@@ -313,6 +329,172 @@ ipcMain.handle('save-settings', async (event, settings) => {
   });
   return { success: true };
 });
+
+// Auth IPC handlers
+ipcMain.handle('get-auth-token', async () => {
+  return store.get('authToken');
+});
+
+ipcMain.handle('get-auth-user', async () => {
+  return store.get('authUser');
+});
+
+ipcMain.handle('open-login', async () => {
+  // Open browser to web login page with desktop callback
+  const loginUrl = `${BACKEND_URL}/api/login?desktop=true`;
+  shell.openExternal(loginUrl);
+  return { success: true };
+});
+
+ipcMain.handle('logout', async () => {
+  try {
+    const { session, net } = require('electron');
+    const cookieUrl = BACKEND_URL.startsWith('https') ? BACKEND_URL : 'http://localhost:5000';
+    
+    // Call backend logout endpoint to invalidate session
+    const request = net.request({
+      method: 'GET',
+      url: `${BACKEND_URL}/api/logout`,
+      session: session.defaultSession
+    });
+    
+    request.on('response', () => {
+      // Response handled, we don't need to process it
+    });
+    
+    request.on('error', (error) => {
+      console.error('[Auth] Logout error:', error);
+    });
+    
+    request.end();
+    
+    // Remove cookie from Electron session
+    await session.defaultSession.cookies.remove(cookieUrl, 'connect.sid');
+    
+    // Clear local storage
+    store.delete('authToken');
+    store.delete('authUser');
+    
+    return { success: true };
+  } catch (error) {
+    console.error('[Auth] Logout error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle auth callback from browser
+async function handleAuthCallback(url) {
+  if (url.startsWith('gamehub://auth-callback')) {
+    const urlObj = new URL(url);
+    const token = urlObj.searchParams.get('token');
+    
+    if (token && mainWindow) {
+      // Store token
+      store.set('authToken', decodeURIComponent(token));
+      
+      // Set cookie in Electron session for authenticated requests
+      const { session } = require('electron');
+      const cookieUrl = BACKEND_URL.startsWith('https') ? BACKEND_URL : 'http://localhost:5000';
+      
+      await session.defaultSession.cookies.set({
+        url: cookieUrl,
+        name: 'connect.sid',
+        value: decodeURIComponent(token),
+        httpOnly: true,
+        secure: BACKEND_URL.startsWith('https'),
+      });
+      
+      // Fetch user profile (now cookie is set)
+      fetchUserProfile().then(user => {
+        if (user) {
+          store.set('authUser', user);
+          mainWindow.webContents.send('auth-success', { user, token: decodeURIComponent(token) });
+        }
+      });
+    }
+  }
+}
+
+// Handle protocol deep links - macOS
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleAuthCallback(url);
+});
+
+// Handle protocol deep links - Windows/Linux
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, focus our window and handle the protocol
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+      
+      // Check for protocol URL in command line args
+      const url = commandLine.find(arg => arg.startsWith('gamehub://'));
+      if (url) {
+        handleAuthCallback(url);
+      }
+    }
+  });
+}
+
+// Check for protocol URL on first launch (Windows/Linux)
+if (process.platform === 'win32' || process.platform === 'linux') {
+  const url = process.argv.find(arg => arg.startsWith('gamehub://'));
+  if (url) {
+    app.whenReady().then(() => {
+      setTimeout(() => handleAuthCallback(url), 1000); // Wait for window to be ready
+    });
+  }
+}
+
+// Fetch user profile from backend (cookie already set in session)
+async function fetchUserProfile() {
+  try {
+    const { net } = require('electron');
+    
+    return new Promise((resolve) => {
+      const request = net.request({
+        method: 'GET',
+        url: `${BACKEND_URL}/api/auth/user`,
+        session: require('electron').session.defaultSession
+      });
+      
+      request.on('response', (response) => {
+        let data = '';
+        
+        response.on('data', (chunk) => {
+          data += chunk.toString();
+        });
+        
+        response.on('end', () => {
+          if (response.statusCode === 200) {
+            try {
+              resolve(JSON.parse(data));
+            } catch (e) {
+              resolve(null);
+            }
+          } else {
+            resolve(null);
+          }
+        });
+      });
+      
+      request.on('error', (error) => {
+        console.error('[Auth] Error fetching user:', error);
+        resolve(null);
+      });
+      
+      request.end();
+    });
+  } catch (error) {
+    console.error('[Auth] Error fetching user:', error);
+    return null;
+  }
+}
 
 app.whenReady().then(() => {
   createWindow();

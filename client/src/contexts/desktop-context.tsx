@@ -5,9 +5,13 @@ interface DesktopContextType {
   steamPath: string | null;
   dayzPath: string | null;
   steamAvailable: boolean;
+  authToken: string | null;
+  authUser: any | null;
   getInstalledMods: () => Promise<InstalledMod[]>;
   launchServer: (data: LaunchServerData) => Promise<LaunchResult>;
   subscribeToMods: (modIds: number[]) => Promise<SubscribeResult>;
+  openLogin: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 interface InstalledMod {
@@ -44,9 +48,13 @@ const DesktopContext = createContext<DesktopContextType>({
   steamPath: null,
   dayzPath: null,
   steamAvailable: false,
+  authToken: null,
+  authUser: null,
   getInstalledMods: async () => [],
   launchServer: async () => ({ canLaunch: false }),
-  subscribeToMods: async () => ({ success: false })
+  subscribeToMods: async () => ({ success: false }),
+  openLogin: async () => {},
+  logout: async () => {}
 });
 
 export function DesktopProvider({ children }: { children: ReactNode }) {
@@ -54,6 +62,8 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
   const [steamPath, setSteamPath] = useState<string | null>(null);
   const [dayzPath, setDayzPath] = useState<string | null>(null);
   const [steamAvailable, setSteamAvailable] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<any | null>(null);
 
   useEffect(() => {
     // Check if running in Electron
@@ -67,6 +77,17 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
         setSteamAvailable(data.steamAvailable);
         console.log('[Desktop] Ready:', data);
       });
+
+      // Listen for auth success
+      window.electronAPI.onAuthSuccess((data: any) => {
+        setAuthToken(data.token);
+        setAuthUser(data.user);
+        console.log('[Desktop] Auth success:', data.user);
+      });
+
+      // Load stored auth on startup
+      window.electronAPI.getAuthToken().then(setAuthToken);
+      window.electronAPI.getAuthUser().then(setAuthUser);
     }
   }, []);
 
@@ -89,6 +110,18 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
     return window.electronAPI.subscribeToMods({ modIds });
   };
 
+  const openLogin = async () => {
+    if (!window.electronAPI) return;
+    await window.electronAPI.openLogin();
+  };
+
+  const logout = async () => {
+    if (!window.electronAPI) return;
+    await window.electronAPI.logout();
+    setAuthToken(null);
+    setAuthUser(null);
+  };
+
   return (
     <DesktopContext.Provider
       value={{
@@ -96,9 +129,13 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
         steamPath,
         dayzPath,
         steamAvailable,
+        authToken,
+        authUser,
         getInstalledMods,
         launchServer,
-        subscribeToMods
+        subscribeToMods,
+        openLogin,
+        logout
       }}
     >
       {children}
@@ -120,7 +157,12 @@ declare global {
       subscribeToMods: (data: { modIds: number[] }) => Promise<SubscribeResult>;
       getSettings: () => Promise<any>;
       saveSettings: (settings: any) => Promise<any>;
+      getAuthToken: () => Promise<string | null>;
+      getAuthUser: () => Promise<any | null>;
+      openLogin: () => Promise<void>;
+      logout: () => Promise<void>;
       onDesktopReady: (callback: (data: any) => void) => void;
+      onAuthSuccess: (callback: (data: any) => void) => void;
     };
   }
 }

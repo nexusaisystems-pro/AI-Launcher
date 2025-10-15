@@ -1,5 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Desktop backend URL
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://gamehublauncher.com';
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -7,16 +10,25 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Helper to build full URL for desktop mode
+function getFullUrl(url: string): string {
+  // If in desktop mode and URL is relative, prepend backend URL
+  if (window.electronAPI && url.startsWith('/')) {
+    return `${BACKEND_URL}${url}`;
+  }
+  return url;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const res = await fetch(getFullUrl(url), {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    credentials: "include", // Electron session handles cookies automatically
   });
 
   await throwIfResNotOk(res);
@@ -29,8 +41,10 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
+    const url = queryKey.join("/") as string;
+    
+    const res = await fetch(getFullUrl(url), {
+      credentials: "include", // Electron session handles cookies automatically
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
