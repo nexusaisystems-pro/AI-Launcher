@@ -24,8 +24,31 @@ function HomePage() {
     );
   }
 
-  // Show landing page if not authenticated, dashboard if authenticated
-  return user ? <Dashboard /> : <Landing />;
+  // Redirect based on user role
+  if (!user) return <Landing />;
+  
+  // Redirect admin users to admin panel
+  if (user.role === "admin") {
+    window.location.hash = '#/admin';
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-primary-glow font-display text-xl">Redirecting to admin panel...</div>
+      </div>
+    );
+  }
+  
+  // Redirect owner users to owner dashboard
+  if (user.role === "owner") {
+    window.location.hash = '#/owner';
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-primary-glow font-display text-xl">Redirecting to owner dashboard...</div>
+      </div>
+    );
+  }
+  
+  // Regular users go to server browser
+  return <Dashboard />;
 }
 
 function AppRouter() {
