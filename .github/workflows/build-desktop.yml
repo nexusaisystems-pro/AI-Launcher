@@ -42,8 +42,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web application
-        run: npm run build
+      - name: Build web application for Electron
+        run: npx vite build --config vite.electron.config.ts
 
       - name: Prepare package.json for Electron
         shell: bash
