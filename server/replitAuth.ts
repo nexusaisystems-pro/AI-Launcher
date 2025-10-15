@@ -66,12 +66,8 @@ async function upsertUser(
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    role: claims["role"] || "player", // Default to player role if not specified
   };
-  
-  // Include role from OIDC claims if present (for testing integration)
-  if (claims["role"]) {
-    userData.role = claims["role"];
-  }
   
   await storage.upsertUser(userData);
 }

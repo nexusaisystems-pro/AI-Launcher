@@ -38,7 +38,7 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url", { length: 500 }),
   // Custom fields for platform
   steamId: varchar("steam_id", { length: 100 }).unique(), // For Steam OAuth
-  role: varchar("role", { length: 20 }).notNull().default("owner"), // 'owner', 'admin'
+  role: varchar("role", { length: 20 }).notNull().default("player"), // 'player', 'owner', 'admin'
   emailVerified: boolean("email_verified").default(false),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
