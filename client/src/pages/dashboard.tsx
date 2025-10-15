@@ -123,6 +123,19 @@ export default function Dashboard() {
     setSelectedServer(server);
   };
 
+  const handleLogout = async () => {
+    try {
+      // Call logout API to destroy session
+      await fetch('/api/logout', { credentials: 'include' });
+      // Navigate to landing page
+      window.location.hash = '#/';
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still navigate to landing even if logout fails
+      window.location.hash = '#/';
+    }
+  };
+
   const handleJoinServer = (server: ServerWithIntelligence) => {
     setSelectedServer(server);
     setIsJoinModalOpen(true);
@@ -340,7 +353,7 @@ export default function Dashboard() {
             {!isDesktop && (
               <Button
                 variant="ghost"
-                onClick={() => window.location.hash = '#/'}
+                onClick={handleLogout}
                 className="glass border border-primary/30 hover:border-red-500/50 hover:bg-red-500/10 transition-all font-semibold"
                 data-testid="button-logout"
               >
