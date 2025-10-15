@@ -80,21 +80,33 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     if (existingUser.length > 0) {
-      // Update existing user
+      // Update existing user - preserve role if not provided in userData
+      const updateData: any = {
+        ...userData,
+        updatedAt: new Date(),
+      };
+      
+      // If role is not provided in userData, preserve the existing role
+      if (!userData.role && existingUser[0].role) {
+        updateData.role = existingUser[0].role;
+      }
+      
       const [user] = await db
         .update(users)
-        .set({
-          ...userData,
-          updatedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(users.id, existingUser[0].id))
         .returning();
       return user;
     } else {
-      // Insert new user
+      // Insert new user - default to player role if not specified
+      const insertData = {
+        ...userData,
+        role: userData.role || 'player',
+      };
+      
       const [user] = await db
         .insert(users)
-        .values(userData)
+        .values(insertData)
         .returning();
       return user;
     }
