@@ -217,10 +217,10 @@ function createWindow() {
 
   // In development, load from dev server
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5000');
+    mainWindow.loadURL('http://localhost:5000/#/launcher');
     mainWindow.webContents.openDevTools();
   } else {
-    // In production, load from built files
+    // In production, load from built files and navigate to launcher
     // __dirname resolves correctly both in dev and when packaged
     const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
     
@@ -228,7 +228,10 @@ function createWindow() {
     console.log('[Desktop] __dirname:', __dirname);
     console.log('[Desktop] File exists:', fs.existsSync(indexPath));
     
-    mainWindow.loadFile(indexPath);
+    // Load the file first, then navigate to launcher route
+    mainWindow.loadFile(indexPath).then(() => {
+      mainWindow.webContents.executeJavaScript(`window.location.hash = '#/launcher'`);
+    });
   }
 
   // Initialize Steam

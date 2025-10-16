@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, Monitor, Apple, Laptop } from 'lucide-react';
+import { Download, Monitor, Apple, Laptop, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -256,6 +256,44 @@ export default function Downloads() {
                 <li>Double-click to run</li>
                 <li>Set your Steam path in Settings</li>
               </ol>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Windows Defender SmartScreen Warning */}
+        <Card className="mt-8 border-amber-500/30 bg-amber-500/5" data-testid="windows-defender-warning">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <ShieldAlert className="w-5 h-5" />
+              Windows SmartScreen Warning
+            </CardTitle>
+            <CardDescription>
+              You may see a "Windows protected your PC" message when running the app
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm font-medium mb-3">Why does this happen?</p>
+              <p className="text-sm text-muted-foreground">
+                GameHub Launcher is a new application and doesn't have a paid code-signing certificate yet ($300-500/year). 
+                Windows shows this warning for unsigned apps as a precaution - it doesn't mean the app is unsafe.
+              </p>
+            </div>
+            
+            <div>
+              <p className="text-sm font-semibold mb-2">How to run the app safely:</p>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                <li>When you see "Windows protected your PC", click <strong className="text-foreground">"More info"</strong></li>
+                <li>Then click <strong className="text-foreground">"Run anyway"</strong> button</li>
+                <li>The app will launch normally</li>
+                <li>You only need to do this once - Windows will remember your choice</li>
+              </ol>
+            </div>
+
+            <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+              <p className="text-sm text-green-700 dark:text-green-400">
+                <strong>✓ GameHub Launcher is safe:</strong> The app is open-source, runs locally on your machine, and only connects to Steam Workshop and game servers.
+              </p>
             </div>
           </CardContent>
         </Card>
