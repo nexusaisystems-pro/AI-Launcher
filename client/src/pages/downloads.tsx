@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Download, Monitor, Apple, Laptop, ShieldAlert, Loader2 } from 'lucide-react';
+import { Download, Monitor, Apple, Laptop, ShieldAlert, Loader2, ArrowLeft } from 'lucide-react';
+import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -119,6 +120,14 @@ export default function Downloads() {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-16 max-w-4xl">
+          <div className="mb-8">
+            <Link href="/">
+              <Button variant="ghost" size="sm" data-testid="button-back-home">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold mb-4">Download GameHub Launcher</h1>
             <p className="text-xl text-muted-foreground">
@@ -166,6 +175,14 @@ export default function Downloads() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-16 max-w-6xl">
+        <div className="mb-8">
+          <Link href="/">
+            <Button variant="ghost" size="sm" data-testid="button-back-home">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </Link>
+        </div>
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4" data-testid="downloads-title">
