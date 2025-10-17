@@ -1,9 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Download, Monitor, Apple, Laptop, ShieldAlert } from 'lucide-react';
+import { Download, Monitor, Apple, Laptop, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 type OS = 'windows' | 'mac' | 'linux' | 'unknown';
+
+interface ReleaseAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+}
+
+interface DownloadInfo {
+  name: string;
+  icon: typeof Laptop;
+  color: string;
+  url: string;
+  fileSize: string;
+  description: string;
+}
 
 function detectOS(): OS {
   const userAgent = window.navigator.userAgent.toLowerCase();
@@ -15,44 +30,86 @@ function detectOS(): OS {
   return 'unknown';
 }
 
+function formatFileSize(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return `~${Math.round(mb)}MB`;
+}
+
 export default function Downloads() {
   const [detectedOS, setDetectedOS] = useState<OS>('unknown');
+  const [downloads, setDownloads] = useState<Record<OS, DownloadInfo | null>>({
+    windows: null,
+    mac: null,
+    linux: null,
+    unknown: null,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const GITHUB_REPO = import.meta.env.VITE_GITHUB_REPO || '';
+  const LATEST_RELEASE_URL = GITHUB_REPO ? `https://github.com/${GITHUB_REPO}/releases/latest` : '';
 
   useEffect(() => {
     setDetectedOS(detectOS());
   }, []);
 
-  // GitHub repository - will be set when you deploy to GitHub
-  // For now, this shows instructions to set it up
-  const GITHUB_REPO = import.meta.env.VITE_GITHUB_REPO || '';
-  const LATEST_RELEASE_URL = GITHUB_REPO ? `https://github.com/${GITHUB_REPO}/releases/latest` : '';
+  useEffect(() => {
+    if (!GITHUB_REPO) {
+      setIsLoading(false);
+      return;
+    }
 
-  const downloads = {
-    windows: {
-      name: 'Windows',
-      icon: Laptop,
-      color: 'text-blue-500',
-      url: `https://github.com/${GITHUB_REPO}/releases/latest/download/GameHub%20Launcher.exe`,
-      fileSize: '~160MB',
-      description: 'Portable executable for Windows 10/11',
-    },
-    mac: {
-      name: 'macOS',
-      icon: Apple,
-      color: 'text-gray-400',
-      url: `https://github.com/${GITHUB_REPO}/releases/latest/download/GameHub%20Launcher.dmg`,
-      fileSize: '~165MB',
-      description: 'DMG installer for macOS 10.15+',
-    },
-    linux: {
-      name: 'Linux',
-      icon: Monitor,
-      color: 'text-yellow-500',
-      url: `https://github.com/${GITHUB_REPO}/releases/latest/download/GameHub%20Launcher.AppImage`,
-      fileSize: '~155MB',
-      description: 'AppImage for Ubuntu/Debian/Fedora',
-    },
-  };
+    async function fetchReleaseAssets() {
+      try {
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch release data');
+        }
+        
+        const data = await response.json();
+        const assets: ReleaseAsset[] = data.assets || [];
+
+        const windowsAsset = assets.find((a: ReleaseAsset) => a.name.endsWith('.exe'));
+        const macAsset = assets.find((a: ReleaseAsset) => a.name.endsWith('.dmg'));
+        const linuxAsset = assets.find((a: ReleaseAsset) => a.name.endsWith('.AppImage'));
+
+        setDownloads({
+          windows: windowsAsset ? {
+            name: 'Windows',
+            icon: Laptop,
+            color: 'text-blue-500',
+            url: windowsAsset.browser_download_url,
+            fileSize: formatFileSize(windowsAsset.size),
+            description: 'Portable executable for Windows 10/11',
+          } : null,
+          mac: macAsset ? {
+            name: 'macOS',
+            icon: Apple,
+            color: 'text-gray-400',
+            url: macAsset.browser_download_url,
+            fileSize: formatFileSize(macAsset.size),
+            description: 'DMG installer for macOS 10.15+',
+          } : null,
+          linux: linuxAsset ? {
+            name: 'Linux',
+            icon: Monitor,
+            color: 'text-yellow-500',
+            url: linuxAsset.browser_download_url,
+            fileSize: formatFileSize(linuxAsset.size),
+            description: 'AppImage for Ubuntu/Debian/Fedora',
+          } : null,
+          unknown: null,
+        });
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching release assets:', err);
+        setError('Unable to load download links. Please visit GitHub releases directly.');
+        setIsLoading(false);
+      }
+    }
+
+    fetchReleaseAssets();
+  }, [GITHUB_REPO]);
 
   const recommended = detectedOS !== 'unknown' ? downloads[detectedOS] : null;
   const Icon = recommended?.icon || Download;
@@ -161,36 +218,53 @@ export default function Downloads() {
           <h2 className="text-2xl font-semibold mb-6" data-testid="all-platforms-title">
             All Platforms
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {Object.entries(downloads).map(([key, platform]) => {
-              const PlatformIcon = platform.icon;
-              return (
-                <Card key={key} data-testid={`download-card-${key}`}>
-                  <CardHeader>
-                    <div className="flex items-center gap-3 mb-2">
-                      <PlatformIcon className={`w-6 h-6 ${platform.color}`} />
-                      <CardTitle>{platform.name}</CardTitle>
-                    </div>
-                    <CardDescription>{platform.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Size: {platform.fileSize}
-                    </p>
-                    <Button
-                      className="w-full"
-                      variant={key === detectedOS ? 'default' : 'outline'}
-                      onClick={() => window.open(platform.url, '_blank')}
-                      data-testid={`button-download-${key}`}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              <span className="ml-3 text-muted-foreground">Loading download links...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <Button variant="outline" onClick={() => window.open(LATEST_RELEASE_URL, '_blank')}>
+                View on GitHub
+              </Button>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-6">
+              {Object.entries(downloads)
+                .filter(([_, platform]) => platform !== null)
+                .map(([key, platform]) => {
+                  if (!platform) return null;
+                  const PlatformIcon = platform.icon;
+                  return (
+                    <Card key={key} data-testid={`download-card-${key}`}>
+                      <CardHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                          <PlatformIcon className={`w-6 h-6 ${platform.color}`} />
+                          <CardTitle>{platform.name}</CardTitle>
+                        </div>
+                        <CardDescription>{platform.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Size: {platform.fileSize}
+                        </p>
+                        <Button
+                          className="w-full"
+                          variant={key === detectedOS ? 'default' : 'outline'}
+                          onClick={() => window.open(platform.url, '_blank')}
+                          data-testid={`button-download-${key}`}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
+          )}
         </div>
 
         {/* Features */}
