@@ -5,11 +5,12 @@
 GameHub Launcher is a next-generation multi-game server browser platform by Nexus AI Systems, currently in beta for DayZ and planned for expansion to other games like Rust and Arma 3. It offers AI-powered server recommendations, real-time statistics, automatic mod management, and one-click server joining. The platform is a full-stack TypeScript application with a React frontend and Express backend, designed for 100,000+ players.
 
 The platform includes:
-- A multi-game homepage showcasing all supported games (DayZ in beta, 7 games coming soon).
-- Game-specific landing pages with features, stats, and dual CTAs for players and server owners.
-- A main launcher with a server browser for authenticated users.
-- An owner dashboard for verified server owners.
-- An admin panel for platform administration.
+- An AI-branded multi-game homepage with neural-powered positioning, featuring DayZ beta prominently and 7 games coming soon
+- Game-specific landing pages with features, stats, and dual CTAs for players and server owners
+- A main launcher with a server browser for authenticated users
+- An owner dashboard for verified server owners
+- An admin panel for platform administration
+- Newsletter subscription system for AI insights and updates
 
 ## User Preferences
 
@@ -43,7 +44,14 @@ A Mod List Enrichment Pipeline extends the schema with a `modList` JSON column, 
 
 ### Data Storage Solutions
 
-The primary database is PostgreSQL, accessed via the Neon Database serverless driver and managed with Drizzle ORM and Drizzle Kit for migrations. Data models include: `Games`, `Users`, `Servers` (with gameId), `Server Owners`, `Pending Claims`, `Server Analytics`, `User Preferences`, `Workshop Mods` (cached), `Admin Activity Log`, and `System Metrics`. JSON fields are used for complex data.
+The primary database is PostgreSQL, accessed via the Neon Database serverless driver and managed with Drizzle ORM and Drizzle Kit for migrations. Data models include: `Games`, `Users`, `Servers` (with gameId), `Server Owners`, `Pending Claims`, `Server Analytics`, `User Preferences`, `Workshop Mods` (cached), `Admin Activity Log`, `System Metrics`, and `Newsletter Subscriptions`. JSON fields are used for complex data.
+
+**Newsletter System (October 2025):**
+- Newsletter subscriptions table tracks email signups for AI insights
+- Upsert logic handles re-subscriptions (reactivates if previously unsubscribed)
+- Form validation using Zod schema with email validation
+- POST /api/newsletter/subscribe endpoint
+- Integrated into homepage Command Center footer
 
 ### Authentication and Authorization
 
@@ -105,7 +113,45 @@ The platform uses **Replit Auth** (OpenID Connect) for unified authentication ac
 - **Zod**: For runtime schema validation.
 - **React Hook Form**: With Zod resolvers for form handling.
 - **Drizzle-Zod**: For automatic schema validation from database models.
-### Netflix-Style Carousel Layout (October 2025)
+### Homepage Redesign - AI-First Branding (October 2025)
+**Complete homepage overhaul to emphasize cutting-edge AI technology and make DayZ beta stand out:**
+
+**Hero Section:**
+- Neural-powered branding with animated Brain icon and glow effects
+- "GameHub AI" headline with "Neural-Powered Server Discovery" tagline
+- Animated background: radial gradients + grid pattern for tech aesthetic
+- Social proof: 100K+ players, live server count, verified badge, one-click join
+- Dual CTAs: "Launch DayZ Beta" (primary) and "Download Desktop App" (secondary)
+
+**Featured DayZ Showcase:**
+- Full-width gradient hero panel (green/primary colors) separate from game grid
+- "LIVE BETA" badge for clear differentiation
+- Live statistics: servers online, players active (real-time from /api/stats)
+- Three AI feature cards: Neural Server Discovery, Predictive Queue Intelligence, Instant Join
+- Action buttons: "Browse Servers" and "Learn More"
+
+**Why AI Matters Section:**
+- Three-pillar explanation of AI pipeline
+- Data Ingestion (Cpu icon) → ML Enrichment (Network icon) → Smart Recommendations (TrendingUp icon)
+- Positions GameHub as AI-powered vs traditional server browsers
+
+**Games Grid:**
+- DayZ removed from grid (exclusively in featured section above)
+- 7 coming soon games in smaller, desaturated cards (50% opacity)
+- Rust, Valheim, Minecraft, Arma 3, Counter Strike 2, 7 Days to Die, Project Zomboid
+
+**Command Center Footer:**
+- Newsletter signup with email validation (insertNewsletterSubscriptionSchema)
+- Contact email: support@gamehublauncher.com
+- Social links: Discord, Documentation
+- Company branding: Nexus AI Systems tagline
+
+**Visual Enhancements:**
+- Animated glows, parallax effects, gradient overlays
+- Dark theme with purple/green/primary accent colors
+- Responsive design with mobile-first approach
+
+### Netflix-Style Carousel Layout
 - Redesigned sponsored servers display as horizontal Netflix-style carousel at top of browser
 - Horizontal scrolling with fixed 400px card width and smooth overflow behavior
 - Full-bleed layout using negative margins with compensating padding
