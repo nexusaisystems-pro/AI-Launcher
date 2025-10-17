@@ -196,6 +196,16 @@ export const battlemetricsCache = pgTable("battlemetrics_cache", {
   lastDetailRefresh: timestamp("last_detail_refresh"),
 });
 
+// Newsletter subscriptions table
+export const newsletterSubscriptions = pgTable("newsletter_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 100 }),
+  subscribedAt: timestamp("subscribed_at").default(sql`CURRENT_TIMESTAMP`),
+  unsubscribedAt: timestamp("unsubscribed_at"),
+  active: boolean("active").default(true),
+});
+
 // Types
 export interface GameFeatures {
   hasMods?: boolean;
@@ -329,6 +339,14 @@ export const insertSystemMetricSchema = createInsertSchema(systemMetrics).omit({
   timestamp: true,
 });
 
+export const insertNewsletterSubscriptionSchema = createInsertSchema(newsletterSubscriptions).omit({
+  id: true,
+  subscribedAt: true,
+}).extend({
+  email: z.string().email("Please enter a valid email address"),
+  name: z.string().min(1, "Name is required").optional(),
+});
+
 // Types
 export type InsertServer = z.infer<typeof insertServerSchema>;
 export type Server = typeof servers.$inferSelect;
@@ -355,3 +373,5 @@ export type InsertAdminActivityLog = z.infer<typeof insertAdminActivityLogSchema
 export type AdminActivityLog = typeof adminActivityLog.$inferSelect;
 export type InsertSystemMetric = z.infer<typeof insertSystemMetricSchema>;
 export type SystemMetric = typeof systemMetrics.$inferSelect;
+export type InsertNewsletterSubscription = z.infer<typeof insertNewsletterSubscriptionSchema>;
+export type NewsletterSubscription = typeof newsletterSubscriptions.$inferSelect;

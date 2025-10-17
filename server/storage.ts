@@ -1,4 +1,4 @@
-import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type WorkshopMod, type InsertWorkshopMod, type BattleMetricsCache, type InsertBattleMetricsCache, type ServerStats, type ServerFilters, type ServerOwner, type InsertServerOwner, type VerificationToken, type InsertVerificationToken, type User, type UpsertUser, type PendingClaim, type InsertPendingClaim, servers, serverAnalytics, userPreferences, workshopMods, battlemetricsCache, serverOwners, verificationTokens, users, pendingClaims } from "@shared/schema";
+import { type Server, type InsertServer, type ServerAnalytics, type InsertServerAnalytics, type UserPreferences, type InsertUserPreferences, type WorkshopMod, type InsertWorkshopMod, type BattleMetricsCache, type InsertBattleMetricsCache, type ServerStats, type ServerFilters, type ServerOwner, type InsertServerOwner, type VerificationToken, type InsertVerificationToken, type User, type UpsertUser, type PendingClaim, type InsertPendingClaim, type NewsletterSubscription, type InsertNewsletterSubscription, servers, serverAnalytics, userPreferences, workshopMods, battlemetricsCache, serverOwners, verificationTokens, users, pendingClaims, newsletterSubscriptions } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
 
@@ -58,6 +58,10 @@ export interface IStorage {
   createPendingClaim(claim: InsertPendingClaim): Promise<PendingClaim>;
   approveClaim(id: string, adminId: string): Promise<PendingClaim | undefined>;
   rejectClaim(id: string, adminId: string, reason: string): Promise<PendingClaim | undefined>;
+  
+  // Newsletter subscriptions
+  subscribeNewsletter(subscription: InsertNewsletterSubscription): Promise<NewsletterSubscription>;
+  getNewsletterSubscription(email: string): Promise<NewsletterSubscription | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -609,6 +613,30 @@ export class DatabaseStorage implements IStorage {
       .where(eq(pendingClaims.id, id))
       .returning();
     return claim;
+  }
+
+  async subscribeNewsletter(subscriptionData: InsertNewsletterSubscription): Promise<NewsletterSubscription> {
+    const [subscription] = await db
+      .insert(newsletterSubscriptions)
+      .values({ ...subscriptionData, active: true })
+      .onConflictDoUpdate({
+        target: newsletterSubscriptions.email,
+        set: { 
+          name: subscriptionData.name,
+          active: true,
+          unsubscribedAt: null,
+        }
+      })
+      .returning();
+    return subscription;
+  }
+
+  async getNewsletterSubscription(email: string): Promise<NewsletterSubscription | undefined> {
+    const [subscription] = await db
+      .select()
+      .from(newsletterSubscriptions)
+      .where(eq(newsletterSubscriptions.email, email));
+    return subscription;
   }
 }
 

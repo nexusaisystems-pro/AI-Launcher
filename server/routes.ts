@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertServerSchema, insertUserPreferencesSchema, type ServerFilters } from "@shared/schema";
+import { insertServerSchema, insertUserPreferencesSchema, insertNewsletterSubscriptionSchema, type ServerFilters } from "@shared/schema";
 import { z } from "zod";
 import { cacheService } from "./cache-service";
 import { steamWorkshopService } from "./steam-workshop-service";
@@ -1216,6 +1216,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error resetting progress:", error);
       res.status(500).json({ error: "Failed to reset progress" });
+    }
+  });
+
+  // Newsletter subscription
+  app.post("/api/newsletter/subscribe", async (req, res) => {
+    try {
+      const subscriptionData = insertNewsletterSubscriptionSchema.parse(req.body);
+      const subscription = await storage.subscribeNewsletter(subscriptionData);
+      res.json({ 
+        success: true,
+        message: "Successfully subscribed to newsletter!",
+        subscription 
+      });
+    } catch (error) {
+      console.error("Newsletter subscription error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid subscription data",
+          details: error.errors 
+        });
+      }
+      
+      res.status(500).json({ error: "Failed to subscribe to newsletter" });
     }
   });
 
