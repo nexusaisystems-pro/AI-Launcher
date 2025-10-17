@@ -33,6 +33,7 @@ if (process.defaultApp) {
 
 let mainWindow;
 let steamworks;
+let pendingProtocolUrl = null; // Buffer for protocol URLs that arrive before window is ready
 
 // Initialize Steamworks if available
 function initSteam() {
@@ -385,13 +386,20 @@ ipcMain.handle('logout', async () => {
   }
 });
 
-// Handle auth callback from browser
-async function handleAuthCallback(url) {
+// Handle protocol deep links (auth and join)
+async function handleProtocolUrl(url) {
+  // If main window isn't ready yet, buffer the URL and process it later
+  if (!mainWindow) {
+    console.log('[Protocol] Window not ready, buffering URL:', url);
+    pendingProtocolUrl = url;
+    return;
+  }
+
   if (url.startsWith('gamehub://auth-callback')) {
     const urlObj = new URL(url);
     const token = urlObj.searchParams.get('token');
     
-    if (token && mainWindow) {
+    if (token) {
       // Store token
       store.set('authToken', decodeURIComponent(token));
       
@@ -415,13 +423,41 @@ async function handleAuthCallback(url) {
         }
       });
     }
+  } else if (url.startsWith('gamehub://join')) {
+    // Handle join server request from web browser
+    const urlObj = new URL(url);
+    const serverAddress = urlObj.searchParams.get('server');
+    const modsParam = urlObj.searchParams.get('mods');
+    const serverName = urlObj.searchParams.get('name') || serverAddress;
+    
+    if (serverAddress) {
+      // Bring window to front
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+      
+      // Parse mods (comma-separated Workshop IDs), filter out invalid IDs
+      const modIds = modsParam ? modsParam.split(',').filter(id => id.trim() && !isNaN(parseInt(id))) : [];
+      const requiredMods = modIds.map(id => ({
+        name: `Workshop Item ${id}`,
+        steamWorkshopId: parseInt(id)
+      }));
+      
+      console.log('[Deep Link] Join server request:', { serverAddress, serverName, requiredMods });
+      
+      // Send join request to renderer
+      mainWindow.webContents.send('deep-link-join', {
+        serverAddress,
+        serverName: decodeURIComponent(serverName),
+        requiredMods
+      });
+    }
   }
 }
 
 // Handle protocol deep links - macOS
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  handleAuthCallback(url);
+  handleProtocolUrl(url);
 });
 
 // Handle protocol deep links - Windows/Linux
@@ -438,7 +474,7 @@ if (!gotTheLock) {
       // Check for protocol URL in command line args
       const url = commandLine.find(arg => arg.startsWith('gamehub://'));
       if (url) {
-        handleAuthCallback(url);
+        handleProtocolUrl(url);
       }
     }
   });
@@ -449,7 +485,7 @@ if (process.platform === 'win32' || process.platform === 'linux') {
   const url = process.argv.find(arg => arg.startsWith('gamehub://'));
   if (url) {
     app.whenReady().then(() => {
-      setTimeout(() => handleAuthCallback(url), 1000); // Wait for window to be ready
+      setTimeout(() => handleProtocolUrl(url), 1000); // Wait for window to be ready
     });
   }
 }

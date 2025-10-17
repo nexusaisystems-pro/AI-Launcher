@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { X, Check, Clock, Download, Play } from "lucide-react";
+import { X, Check, Clock, Download, Play, ExternalLink, Rocket } from "lucide-react";
 import { useFavoritesContext } from "@/contexts/favorites-context";
+import { useDesktop } from "@/contexts/desktop-context";
 import type { Server } from "@shared/schema";
 
 interface JoinModalProps {
@@ -21,10 +22,28 @@ interface JoinStep {
 }
 
 export function JoinModal({ server, isOpen, onClose }: JoinModalProps) {
+  const { isDesktop } = useDesktop();
   const [steps, setSteps] = useState<JoinStep[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isJoining, setIsJoining] = useState(false);
+  const [desktopLinkOpened, setDesktopLinkOpened] = useState(false);
   const { addRecent } = useFavoritesContext();
+  
+  // Generate deep link for desktop app
+  const generateDeepLink = () => {
+    if (!server) return '';
+    const modIds = (server.mods || []).map(m => m.workshopId).join(',');
+    const encodedName = encodeURIComponent(server.name);
+    return `gamehub://join?server=${server.address}&mods=${modIds}&name=${encodedName}`;
+  };
+  
+  const handleOpenInDesktop = () => {
+    const deepLink = generateDeepLink();
+    console.log('[Web] Opening desktop app:', deepLink);
+    window.location.href = deepLink;
+    setDesktopLinkOpened(true);
+    addRecent(server?.address || '');
+  };
 
   // Initialize steps when modal opens
   useEffect(() => {
@@ -172,6 +191,89 @@ export function JoinModal({ server, isOpen, onClose }: JoinModalProps) {
 
   if (!server) return null;
 
+  // Show different UI for web browsers (not desktop app)
+  if (!isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-lg" data-testid="modal-join-web">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Rocket className="w-5 h-5 text-primary" />
+              Join {server.name}
+            </DialogTitle>
+            <DialogDescription>
+              Open GameHub Launcher desktop app to join this server
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Server Info */}
+            <div className="flex items-center gap-4 bg-secondary rounded-lg p-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg flex items-center justify-center flex-shrink-0 border border-primary/30">
+                <span className="text-lg font-bold text-primary">
+                  {server.name.split(" ").slice(0, 2).map(word => word[0]).join("").toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-semibold text-foreground mb-1 truncate">
+                  {server.name}
+                </h3>
+                <div className="text-xs text-muted-foreground mono">{server.address}</div>
+              </div>
+            </div>
+
+            {/* Mods Info */}
+            {server.mods && server.mods.length > 0 && (
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="text-sm font-medium text-foreground mb-2">Required Mods ({server.mods.length})</div>
+                <div className="text-xs text-muted-foreground">
+                  The desktop app will automatically download and manage these mods
+                </div>
+              </div>
+            )}
+
+            {desktopLinkOpened ? (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+                <Check className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                <div className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">
+                  Opening Desktop App...
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  If the app doesn't open, make sure you have it installed
+                </div>
+              </div>
+            ) : (
+              <>
+                <Button 
+                  onClick={handleOpenInDesktop}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12"
+                  data-testid="button-open-desktop"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open in Desktop App
+                </Button>
+
+                <div className="text-center">
+                  <div className="text-xs text-muted-foreground mb-2">Don't have the desktop app?</div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => window.open('/downloads', '_blank')}
+                    data-testid="button-download-app"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Desktop App
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Desktop app UI (original joining flow)
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl" data-testid="modal-join">

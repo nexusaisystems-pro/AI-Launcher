@@ -163,6 +163,7 @@ declare global {
       logout: () => Promise<void>;
       onDesktopReady: (callback: (data: any) => void) => void;
       onAuthSuccess: (callback: (data: any) => void) => void;
+      onDeepLinkJoin: (callback: (data: any) => void) => void;
     };
   }
 }

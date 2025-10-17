@@ -28,6 +28,48 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState("players");
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Listen for deep link join events from web browser (desktop only)
+  useEffect(() => {
+    if (window.electronAPI?.onDeepLinkJoin) {
+      window.electronAPI.onDeepLinkJoin((data: any) => {
+        console.log('[Dashboard] Deep link join request:', data);
+        // Create a server object from the deep link data
+        const server: ServerWithIntelligence = {
+          id: `deep-link-${Date.now()}`,
+          gameId: 'dayz',
+          address: data.serverAddress,
+          name: data.serverName,
+          map: null,
+          playerCount: null,
+          maxPlayers: null,
+          ping: null,
+          passwordProtected: null,
+          perspective: null,
+          region: null,
+          version: null,
+          mods: data.requiredMods?.map((mod: any) => ({
+            workshopId: mod.steamWorkshopId.toString(),
+            name: mod.name,
+            size: 0
+          })) || [],
+          modList: null,
+          queue: null,
+          verified: null,
+          lastWipe: null,
+          restartSchedule: null,
+          lastSeen: new Date(),
+          uptime: null,
+          tags: [],
+          isSponsored: false,
+          sponsorPriority: null,
+          sponsorExpiresAt: null
+        };
+        setSelectedServer(server);
+        setIsJoinModalOpen(true);
+      });
+    }
+  }, []);
+  
   // Use infinite scroll for paginated servers with filters and sorting
   const {
     data: infiniteData,

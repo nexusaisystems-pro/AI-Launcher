@@ -32,5 +32,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Listen for auth success event
   onAuthSuccess: (callback) => {
     ipcRenderer.on('auth-success', (event, data) => callback(data));
+  },
+  
+  // Listen for deep link join event (from web browser)
+  onDeepLinkJoin: (callback) => {
+    ipcRenderer.on('deep-link-join', (event, data) => callback(data));
   }
 });
