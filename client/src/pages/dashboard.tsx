@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { Link, useLocation } from "wouter";
 import { ServerBrowser } from "@/components/server-browser";
 import { ServerDetailPanel } from "@/components/server-detail-panel";
 import { JoinModal } from "@/components/join-modal";
@@ -7,7 +8,7 @@ import { DesktopAuth } from "@/components/desktop-auth";
 import { useServers, useServersInfinite } from "@/hooks/use-servers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCw, Plus, Globe, Sparkles, LogOut } from "lucide-react";
+import { Search, RefreshCw, Plus, Globe, Sparkles, LogOut, Package } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Server, ServerFilters } from "@shared/schema";
 import type { ServerWithIntelligence } from "@/hooks/use-servers";
@@ -16,6 +17,7 @@ import { useDesktop } from "@/contexts/desktop-context";
 
 export default function Dashboard() {
   const { isDesktop } = useDesktop();
+  const [location] = useLocation();
   const [selectedServer, setSelectedServer] = useState<ServerWithIntelligence | null>(null);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -298,17 +300,35 @@ export default function Dashboard() {
       <header className="glass border-b border-primary/20 sticky top-0 z-50 backdrop-blur-xl">
         <div className="flex items-center justify-between px-4 py-3">
           {/* Logo and Title */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 holographic rounded-xl flex items-center justify-center neon-border animate-float">
-              <Globe className="w-6 h-6 text-primary-glow" />
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 blur-xl -z-10"></div>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              <div className="relative w-10 h-10 holographic rounded-xl flex items-center justify-center neon-border animate-float">
+                <Globe className="w-6 h-6 text-primary-glow" />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 blur-xl -z-10"></div>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold font-display text-foreground bg-clip-text text-transparent bg-gradient-to-r from-primary-glow via-secondary-glow to-accent-glow animate-shimmer" style={{backgroundSize: "200% auto"}}>
+                  DayZ Launcher
+                </h1>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Next-Gen Experience</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold font-display text-foreground bg-clip-text text-transparent bg-gradient-to-r from-primary-glow via-secondary-glow to-accent-glow animate-shimmer" style={{backgroundSize: "200% auto"}}>
-                DayZ Server Browser
-              </h1>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Next-Gen Launcher</p>
-            </div>
+            
+            {/* Navigation Tabs */}
+            <nav className="flex gap-1 border-l border-primary/20 pl-6">
+              <Link href="/launcher">
+                <a className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${location === '/launcher' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-primary/10'}`} data-testid="tab-servers">
+                  <Globe className="w-4 h-4" />
+                  Servers
+                </a>
+              </Link>
+              <Link href="/mods">
+                <a className={`px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 ${location === '/mods' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-primary/10'}`} data-testid="tab-mods">
+                  <Package className="w-4 h-4" />
+                  Mods
+                </a>
+              </Link>
+            </nav>
           </div>
           
           {/* AI Search Bar */}

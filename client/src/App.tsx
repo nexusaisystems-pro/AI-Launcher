@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Homepage from "@/pages/homepage";
 import DayZLanding from "@/pages/dayz-landing";
 import Dashboard from "@/pages/dashboard";
+import Mods from "@/pages/mods";
 import OwnerDashboard from "@/pages/owner-dashboard";
 import AdminPanel from "@/pages/admin-panel";
 import Downloads from "@/pages/downloads";
@@ -20,6 +21,7 @@ function AppRouter() {
       <Route path="/" component={Homepage} />
       <Route path="/dayz" component={DayZLanding} />
       <Route path="/launcher" component={Dashboard} />
+      <Route path="/mods" component={Mods} />
       <Route path="/downloads" component={Downloads} />
       <Route path="/owner" component={OwnerDashboard} />
       <Route path="/admin" component={AdminPanel} />
