@@ -8,8 +8,12 @@ interface DesktopContextType {
   authToken: string | null;
   authUser: any | null;
   getInstalledMods: () => Promise<InstalledMod[]>;
+  getSubscribedMods: () => Promise<SubscribedMod[]>;
   launchServer: (data: LaunchServerData) => Promise<LaunchResult>;
   subscribeToMods: (modIds: number[]) => Promise<SubscribeResult>;
+  unsubscribeFromMod: (workshopId: string) => Promise<ActionResult>;
+  openModInWorkshop: (workshopId: string) => Promise<void>;
+  deleteModFiles: (workshopId: string) => Promise<ActionResult>;
   openLogin: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -19,6 +23,20 @@ interface InstalledMod {
   name: string;
   path: string;
   size: number;
+}
+
+interface SubscribedMod extends InstalledMod {
+  title: string;
+  subscriptions: number;
+  timeUpdated: number | null;
+  workshopFileSize: number | null;
+  previewUrl: string | null;
+  status: string;
+}
+
+interface ActionResult {
+  success: boolean;
+  error?: string;
 }
 
 interface LaunchServerData {
@@ -51,8 +69,12 @@ const DesktopContext = createContext<DesktopContextType>({
   authToken: null,
   authUser: null,
   getInstalledMods: async () => [],
+  getSubscribedMods: async () => [],
   launchServer: async () => ({ canLaunch: false }),
   subscribeToMods: async () => ({ success: false }),
+  unsubscribeFromMod: async () => ({ success: false }),
+  openModInWorkshop: async () => {},
+  deleteModFiles: async () => ({ success: false }),
   openLogin: async () => {},
   logout: async () => {}
 });
@@ -96,6 +118,11 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
     return window.electronAPI.getInstalledMods();
   };
 
+  const getSubscribedMods = async (): Promise<SubscribedMod[]> => {
+    if (!window.electronAPI) return [];
+    return window.electronAPI.getSubscribedMods();
+  };
+
   const launchServer = async (data: LaunchServerData): Promise<LaunchResult> => {
     if (!window.electronAPI) {
       return { canLaunch: false, error: 'Not running in desktop mode' };
@@ -108,6 +135,25 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'Not running in desktop mode' };
     }
     return window.electronAPI.subscribeToMods({ modIds });
+  };
+
+  const unsubscribeFromMod = async (workshopId: string): Promise<ActionResult> => {
+    if (!window.electronAPI) {
+      return { success: false, error: 'Not running in desktop mode' };
+    }
+    return window.electronAPI.unsubscribeFromMod({ workshopId });
+  };
+
+  const openModInWorkshop = async (workshopId: string): Promise<void> => {
+    if (!window.electronAPI) return;
+    await window.electronAPI.openModInWorkshop({ workshopId });
+  };
+
+  const deleteModFiles = async (workshopId: string): Promise<ActionResult> => {
+    if (!window.electronAPI) {
+      return { success: false, error: 'Not running in desktop mode' };
+    }
+    return window.electronAPI.deleteModFiles({ workshopId });
   };
 
   const openLogin = async () => {
@@ -132,8 +178,12 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
         authToken,
         authUser,
         getInstalledMods,
+        getSubscribedMods,
         launchServer,
         subscribeToMods,
+        unsubscribeFromMod,
+        openModInWorkshop,
+        deleteModFiles,
         openLogin,
         logout
       }}
@@ -153,8 +203,12 @@ declare global {
     electronAPI?: {
       isDesktop: boolean;
       getInstalledMods: () => Promise<InstalledMod[]>;
+      getSubscribedMods: () => Promise<SubscribedMod[]>;
       launchServer: (data: LaunchServerData) => Promise<LaunchResult>;
       subscribeToMods: (data: { modIds: number[] }) => Promise<SubscribeResult>;
+      unsubscribeFromMod: (data: { workshopId: string }) => Promise<ActionResult>;
+      openModInWorkshop: (data: { workshopId: string }) => Promise<void>;
+      deleteModFiles: (data: { workshopId: string }) => Promise<ActionResult>;
       getSettings: () => Promise<any>;
       saveSettings: (settings: any) => Promise<any>;
       getAuthToken: () => Promise<string | null>;

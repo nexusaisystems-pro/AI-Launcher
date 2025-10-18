@@ -8,11 +8,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Get installed mods
   getInstalledMods: () => ipcRenderer.invoke('get-installed-mods'),
   
+  // Get subscribed mods with Steam Workshop details
+  getSubscribedMods: () => ipcRenderer.invoke('get-subscribed-mods'),
+  
   // Launch server with mods
   launchServer: (data) => ipcRenderer.invoke('launch-server', data),
   
   // Subscribe to Steam Workshop mods
   subscribeToMods: (data) => ipcRenderer.invoke('subscribe-to-mods', data),
+  
+  // Unsubscribe from mod
+  unsubscribeFromMod: (data) => ipcRenderer.invoke('unsubscribe-from-mod', data),
+  
+  // Open mod in Steam Workshop
+  openModInWorkshop: (data) => ipcRenderer.invoke('open-mod-in-workshop', data),
+  
+  // Delete mod files
+  deleteModFiles: (data) => ipcRenderer.invoke('delete-mod-files', data),
   
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),

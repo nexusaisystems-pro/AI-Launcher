@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
 const Store = require('electron-store');
+const https = require('https');
 
 // Initialize settings store (like DZSA's settings.json)
 const store = new Store({
@@ -158,6 +159,87 @@ function getFolderSize(folderPath) {
   }
   
   return totalSize;
+}
+
+// Fetch mod details from Steam Workshop API
+async function fetchWorkshopModDetails(workshopIds) {
+  return new Promise((resolve, reject) => {
+    if (!workshopIds || workshopIds.length === 0) {
+      resolve([]);
+      return;
+    }
+
+    // Build form data for POST request
+    const formData = `itemcount=${workshopIds.length}&${workshopIds.map((id, i) => `publishedfileids[${i}]=${id}`).join('&')}`;
+
+    const options = {
+      hostname: 'api.steampowered.com',
+      path: '/ISteamRemoteStorage/GetPublishedFileDetails/v1/',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(formData)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.response && json.response.publishedfiledetails) {
+            resolve(json.response.publishedfiledetails);
+          } else {
+            resolve([]);
+          }
+        } catch (error) {
+          console.error('[Steam API] Parse error:', error);
+          resolve([]);
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      console.error('[Steam API] Request error:', error);
+      resolve([]);
+    });
+
+    req.write(formData);
+    req.end();
+  });
+}
+
+// Get subscribed mods with Steam Workshop metadata
+async function getSubscribedModsWithDetails(steamPath) {
+  const installedMods = scanInstalledMods(steamPath);
+  
+  if (installedMods.length === 0) {
+    return [];
+  }
+
+  // Fetch details from Steam API
+  const workshopIds = installedMods.map(m => m.workshopId);
+  const workshopDetails = await fetchWorkshopModDetails(workshopIds);
+
+  // Merge local data with Steam API data
+  return installedMods.map(mod => {
+    const workshopData = workshopDetails.find(w => w.publishedfileid === mod.workshopId);
+    
+    return {
+      ...mod,
+      title: workshopData?.title || mod.name,
+      subscriptions: workshopData?.subscriptions || 0,
+      timeUpdated: workshopData?.time_updated || null,
+      workshopFileSize: workshopData?.file_size ? parseInt(workshopData.file_size) : null,
+      previewUrl: workshopData?.preview_url || null,
+      status: 'Subscribed'
+    };
+  });
 }
 
 // Launch DayZ with mods
@@ -319,6 +401,50 @@ ipcMain.handle('subscribe-to-mods', async (event, { modIds }) => {
     return { success: true };
   } catch (error) {
     console.error('[Steam] Subscribe error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-subscribed-mods', async () => {
+  const steamPath = store.get('steamPath');
+  return await getSubscribedModsWithDetails(steamPath);
+});
+
+ipcMain.handle('unsubscribe-from-mod', async (event, { workshopId }) => {
+  if (!steamworks) {
+    return { success: false, error: 'Steam not available' };
+  }
+
+  try {
+    steamworks.ugc.UnsubscribeItem(parseInt(workshopId));
+    console.log('[Steam] Unsubscribed from mod:', workshopId);
+    return { success: true };
+  } catch (error) {
+    console.error('[Steam] Unsubscribe error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('open-mod-in-workshop', async (event, { workshopId }) => {
+  const url = `steam://url/CommunityFilePage/${workshopId}`;
+  shell.openExternal(url);
+  return { success: true };
+});
+
+ipcMain.handle('delete-mod-files', async (event, { workshopId }) => {
+  const steamPath = store.get('steamPath');
+  const modPath = path.join(steamPath, 'steamapps', 'workshop', 'content', '221100', workshopId);
+  
+  try {
+    if (fs.existsSync(modPath)) {
+      fs.rmSync(modPath, { recursive: true, force: true });
+      console.log('[Mods] Deleted mod files:', workshopId);
+      return { success: true };
+    } else {
+      return { success: false, error: 'Mod not found' };
+    }
+  } catch (error) {
+    console.error('[Mods] Delete error:', error);
     return { success: false, error: error.message };
   }
 });
