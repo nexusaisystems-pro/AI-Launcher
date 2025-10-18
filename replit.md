@@ -170,9 +170,21 @@ GameHub Launcher now includes a desktop application built with Electron, providi
 **Core Features:**
 - **Steam Integration**: Automatic detection of Steam installation and DayZ game directory
 - **Mod Scanner**: Reads Workshop folder to detect installed mods (parses `mod.cpp` files)
-- **Mod Management**: Uses Steamworks.js API to subscribe/unsubscribe from Workshop mods
+- **Mod Management**: Full-featured mods page with Steam Workshop API integration
 - **Game Launcher**: Builds proper `-mod` parameters using actual Workshop directory paths
 - **Settings Persistence**: Uses electron-store for local configuration storage
+
+**Mods Management Page (October 2025):**
+- Dedicated `/mods` route with tabbed navigation alongside server browser
+- Steam Workshop API integration fetches real-time mod metadata (title, size, subscribers, last updated)
+- Table view showing all subscribed DayZ mods with search, filter, and sort capabilities
+- Mod actions: Unsubscribe, Delete Files, Open in Workshop (via `steam://` protocol)
+- Real-time sync with local Workshop folder (reads `mod.cpp` for names, calculates folder sizes)
+- Desktop-only feature with graceful web fallback (prompts to download desktop app)
+- IPC handlers: `getSubscribedMods`, `unsubscribeFromMod`, `openModInWorkshop`, `deleteModFiles`
+- Uses `ISteamRemoteStorage/GetPublishedFileDetails` API endpoint (no auth key required)
+- Batch API requests for efficient metadata fetching
+- Similar to DZSA Launcher's mods interface
 
 **Key Files:**
 - `desktop/main.js`: Electron main process with Steam integration, mod scanning, IPC handlers
